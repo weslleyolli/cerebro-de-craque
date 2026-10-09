@@ -5,7 +5,7 @@ import { useRecordAttempt, useScenarios, useStats } from '../api/queries'
 import type { Medal, Player, Scenario, ScenarioOption } from '../api/types'
 import { useActivePlayer } from '../auth/PlayerProvider'
 import { Button, ErrorNote, GradeChip, Loading, MedalCard, Verdict } from '../components/ui'
-import { Court } from '../game/Court'
+import { CourtView, ViewToggle, useViewMode } from '../game/CourtView'
 import { arrowsFor, bestOptionIndex, initialState } from '../game/engine'
 import type { BoardState } from '../game/engine'
 import { buildQueue, closingMessage, isMode, sessionLabel, summarize } from '../game/session'
@@ -77,6 +77,7 @@ function Session({
   const freezeRef = useRef<BoardState | null>(null)
   const askedAt = useRef(0)
   const navigate = useNavigate()
+  const [view, setView] = useViewMode()
   const { mutate: recordAttempt } = useRecordAttempt(player.id)
   const { snapshot, reset, play, wait, cancel, current } = useBoardAnimation(player.settings.slow ? 1.7 : 1)
 
@@ -226,16 +227,20 @@ function Session({
             Lance {index + 1} de {queue.length}
           </span>
         </div>
-        <Button variant="ghost" className="min-h-9 px-3 py-1.5 text-sm" onClick={() => navigate('/')}>
-          Sair do treino
-        </Button>
+        <div className="flex items-center gap-2">
+          <ViewToggle view={view} onChange={setView} />
+          <Button variant="ghost" className="min-h-9 px-3 py-1.5 text-sm" onClick={() => navigate('/')}>
+            Sair
+          </Button>
+        </div>
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-[1.05fr_1fr]">
         <div>
           <div className="relative overflow-hidden rounded-2xl bg-court-out p-2">
             {snapshot && (
-              <Court
+              <CourtView
+                view={view}
                 scenario={sc}
                 snapshot={snapshot}
                 arrows={arrows}
@@ -255,7 +260,7 @@ function Session({
             <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-you" />Você</span>
             <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-us" />Seu time</span>
             <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-them ring-1 ring-muted" />Adversário</span>
-            <span>Seu time ataca para cima</span>
+            <span>{view === '3d' ? 'Você ataca para a frente da tela' : 'Seu time ataca para cima'}</span>
           </div>
         </div>
 

@@ -40,6 +40,10 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    // O three.js fica num pedaço separado, baixado só quando a visão 3D abre.
+    chunkSizeWarningLimit: 1200,
+  },
   server: {
     proxy: { '/api': 'http://localhost:8000' },
   },

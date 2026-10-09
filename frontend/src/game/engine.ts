@@ -20,6 +20,8 @@ export interface BoardState {
 export interface Snapshot {
   positions: Record<string, Point>
   ball: Point
+  /** Altura da bola em metros (0 no chão). Só a visão 3D usa. */
+  ballHeight: number
 }
 
 export type Team = 'you' | 'us' | 'them'
@@ -86,16 +88,29 @@ export function interpolate(from: BoardState, to: BoardState, t: number): Snapsh
 
   // Bola no pé do mesmo jogador: acompanha o jogador. Passe ou chute: viaja sozinha.
   const carried = typeof from.ball === 'string' && from.ball === to.ball
-  if (carried) return { positions, ball: ballPoint({ positions, ball: to.ball, face: from.face }) }
+  if (carried)
+    return { positions, ball: ballPoint({ positions, ball: to.ball, face: from.face }), ballHeight: 0 }
 
   const b0 = ballPoint(from)
   const b1 = ballPoint(to)
   const eb = easeOut(r)
-  return { positions, ball: [lerp(b0[0], b1[0], eb), lerp(b0[1], b1[1], eb)] }
+  return {
+    positions,
+    ball: [lerp(b0[0], b1[0], eb), lerp(b0[1], b1[1], eb)],
+    ballHeight: arcHeight(Math.hypot(b1[0] - b0[0], b1[1] - b0[1]), eb),
+  }
+}
+
+const ARC_PER_METER = 0.06
+const ARC_MAX = 1.4
+
+/** Bola viajando sobe um pouco no meio do caminho: passe longo e chute fazem arco. */
+export function arcHeight(distance: number, t: number): number {
+  return Math.sin(Math.PI * t) * Math.min(ARC_MAX, distance * ARC_PER_METER)
 }
 
 export function snapshotOf(state: BoardState): Snapshot {
-  return { positions: { ...state.positions }, ball: ballPoint(state) }
+  return { positions: { ...state.positions }, ball: ballPoint(state), ballHeight: 0 }
 }
 
 export interface Arrow {

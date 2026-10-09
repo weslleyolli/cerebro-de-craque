@@ -89,6 +89,15 @@ describe('engine', () => {
     const x = interpolate(from, to, 0.5).ball[0]
     expect(x).toBeGreaterThan(ballPoint(from)[0])
     expect(x).toBeLessThan(ballPoint(to)[0])
+    // sai do chão no meio do passe e volta ao chão na chegada
+    expect(interpolate(from, to, 0.5).ballHeight).toBeGreaterThan(0)
+    expect(interpolate(from, to, 1).ballHeight).toBeCloseTo(0)
+  })
+
+  it('bola conduzida fica no chão', () => {
+    const from = initialState(scenario)
+    const to = applyFrame(from, { ms: 100, moves: { v: [8, 18] }, ball: null })
+    expect(interpolate(from, to, 0.5).ballHeight).toBe(0)
   })
 
   it('desenha uma seta por opção com destino, parando antes do companheiro', () => {
