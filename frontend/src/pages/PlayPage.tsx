@@ -11,7 +11,15 @@ import type { BoardState } from '../game/engine'
 import { buildQueue, closingMessage, isMode, sessionLabel, summarize } from '../game/session'
 import type { Mode, SessionResult } from '../game/session'
 import { useBoardAnimation } from '../game/useBoardAnimation'
-import { CATEGORIES, GRADES, LETTERS, OPTION_TYPES, OUTCOME_STYLE, TIME_LIMIT_MS } from '../lib/catalog'
+import {
+  CATEGORIES,
+  GRADES,
+  LETTERS,
+  MAX_DECISION_MS,
+  OPTION_TYPES,
+  OUTCOME_STYLE,
+  TIME_LIMIT_MS,
+} from '../lib/catalog'
 import { seconds } from '../lib/format'
 
 export function PlayPage() {
@@ -22,8 +30,10 @@ export function PlayPage() {
   const [run, setRun] = useState(0)
 
   if (!isMode(mode)) return <Navigate to="/" replace />
-  if (scenarios.isPending || stats.isPending) return <Loading label="Preparando a quadra…" />
-  if (scenarios.isError) return <ErrorNote error={scenarios.error} onRetry={() => scenarios.refetch()} />
+  if (!scenarios.data && scenarios.isError)
+    return <ErrorNote error={scenarios.error} onRetry={() => scenarios.refetch()} />
+  // As estatísticas só ajudam a escolher os lances do treino misturado; sem elas, o treino segue.
+  if (!scenarios.data || stats.isPending) return <Loading label="Preparando a quadra…" />
 
   return (
     <Session
@@ -77,7 +87,8 @@ function Session({
   const freezeRef = useRef<BoardState | null>(null)
   const askedAt = useRef(0)
   const navigate = useNavigate()
-  const { mutate: recordAttempt } = useRecordAttempt(player.id)
+  const { mutateAsync: recordAttempt } = useRecordAttempt(player.id)
+  const resultsRef = useRef<SessionResult[]>([])
   const { snapshot, reset, play, wait, cancel, current } = useBoardAnimation(player.settings.slow ? 1.7 : 1)
 
   const sc = byId.get(queue[index]!)!
@@ -106,17 +117,33 @@ function Session({
     }
   }, [sc, reset, wait, play, current, cancel, go])
 
+  /**
+   * Guarda a decisão na sessão e no servidor. Cada envio tem a própria promessa,
+   * então a medalha ou o erro de uma decisão não se perde quando a próxima já começou.
+   * A nota que vale é a do servidor.
+   */
   const save = useCallback(
-    (optionIndex: number | null, ms: number) =>
-      recordAttempt(
-        { scenario_id: sc.id, option_index: optionIndex, decision_ms: Math.round(ms) },
-        {
-          onSuccess: (r) => {
-            if (r.new_medals.length) setNewMedals((m) => [...m, ...r.new_medals])
-          },
-          onError: () => setSaveFailed(true),
-        },
-      ),
+    (optionIndex: number | null, ms: number, localGrade: SessionResult['grade']) => {
+      const index = resultsRef.current.length
+      resultsRef.current = [
+        ...resultsRef.current,
+        { scenarioId: sc.id, grade: localGrade, ms: optionIndex === null ? null : ms },
+      ]
+      setResults(resultsRef.current)
+      recordAttempt({
+        scenario_id: sc.id,
+        option_index: optionIndex,
+        decision_ms: Math.min(Math.round(ms), MAX_DECISION_MS),
+      })
+        .then((r) => {
+          if (r.new_medals.length) setNewMedals((m) => [...m, ...r.new_medals])
+          if (r.grade !== localGrade) {
+            resultsRef.current = resultsRef.current.map((x, i) => (i === index ? { ...x, grade: r.grade } : x))
+            setResults(resultsRef.current)
+          }
+        })
+        .catch(() => setSaveFailed(true))
+    },
     [recordAttempt, sc.id],
   )
 
@@ -129,8 +156,7 @@ function Session({
       go('outcome')
       setShowing('choice')
       setChosen(i)
-      setResults((r) => [...r, { scenarioId: sc.id, grade: option.grade, ms }])
-      save(i, ms)
+      save(i, ms, option.grade)
       if (!(await play(option.frames))) return
       setFeedback({ option, ms, showing: 'choice' })
       go('feedback')
@@ -142,12 +168,11 @@ function Session({
     if (phaseRef.current !== 'ask') return
     go('outcome')
     setShowing('late')
-    setResults((r) => [...r, { scenarioId: sc.id, grade: 'late', ms: null }])
-    save(null, TIME_LIMIT_MS)
+    save(null, TIME_LIMIT_MS, 'late')
     if (!(await play(best.frames))) return
     setFeedback({ option: best, ms: null, showing: 'late' })
     go('feedback')
-  }, [sc.id, best, go, save, play])
+  }, [best, go, save, play])
 
   const watchBest = async () => {
     if (!freezeRef.current) return

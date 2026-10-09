@@ -78,3 +78,73 @@ def test_reset(client, auth, player_id):
     s = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
     assert s["total_attempts"] == 0
     assert s["diagnosis"] is None
+
+
+def test_long_decision_is_kept_and_capped(client, auth, player_id):
+    # Sem pausa com tempo, a criança pode largar o aparelho: a decisão vale mesmo assim.
+    a = post(client, auth, player_id, "2x1", 0, ms=125_000)
+    assert a["decision_ms"] == 120_000
+
+
+def test_stats_survive_a_deactivated_scenario(client, auth, player_id):
+    """Tirar do app uma jogada já jogada não pode quebrar as estatísticas."""
+    from sqlalchemy import text
+
+    from app.db import engine
+
+    post(client, auth, player_id, "2x1", best_index(client, "2x1"))
+    post(client, auth, player_id, "cobertura", best_index(client, "cobertura"))
+    post(client, auth, player_id, "saida", 1)  # transição: arriscada
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE scenarios SET active = false WHERE id = 'saida'"))
+        r = client.get(f"/api/players/{player_id}/stats", headers=auth)
+        assert r.status_code == 200, r.text
+        assert r.json()["diagnosis"]["weakest_scenario_id"] is None
+        assert "saida" not in {s["scenario_id"] for s in r.json()["scenarios"]}
+    finally:
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE scenarios SET active = true WHERE id = 'saida'"))
+
+
+def test_medal_is_not_taken_back_when_a_play_is_added(client, auth, player_id):
+    """Camisa 10 pede todos os lances de ataque; uma jogada nova não tira a medalha."""
+    from sqlalchemy import text
+
+    from app.db import engine
+
+    for sid in ("2x1", "tabela", "pivo"):
+        post(client, auth, player_id, sid, best_index(client, sid))
+    before = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
+    camisa = next(m for m in before["medals"] if m["id"] == "camisa10")
+    assert camisa["earned"]
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO scenarios (id, category, concept, title, sort_order, setup, ask,"
+                " lesson, view, tags, face, start, intro, options, active)"
+                " SELECT 'ataque-novo', category, concept, title, 99, setup, ask, lesson, view,"
+                " tags, face, start, intro, options, true FROM scenarios WHERE id = '2x1'"
+            )
+        )
+    try:
+        after = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
+        camisa_after = next(m for m in after["medals"] if m["id"] == "camisa10")
+        assert camisa_after["earned"] is True
+        assert camisa_after["earned_at"] == camisa["earned_at"]
+
+        # Dominar a jogada nova não comemora de novo uma medalha que já era dela.
+        a = post(client, auth, player_id, "ataque-novo", best_index(client, "ataque-novo"))
+        assert "camisa10" not in {m["id"] for m in a["new_medals"]}
+    finally:
+        with engine.begin() as conn:
+            conn.execute(text("DELETE FROM attempts WHERE scenario_id = 'ataque-novo'"))
+            conn.execute(text("DELETE FROM scenarios WHERE id = 'ataque-novo'"))
+
+
+def test_reset_also_clears_medals(client, auth, player_id):
+    post(client, auth, player_id, "2x1", 0)
+    client.delete(f"/api/players/{player_id}/attempts", headers=auth)
+    s = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
+    assert not any(m["earned"] for m in s["medals"])

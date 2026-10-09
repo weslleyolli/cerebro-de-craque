@@ -31,10 +31,11 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            // As jogadas mudam pouco: mostra a cópia salva e atualiza em segundo plano.
+            // Jogadas sempre da rede; a cópia salva só entra sem conexão, para o
+            // app não mostrar uma nota diferente da que o servidor grava.
             urlPattern: ({ url }) => url.pathname.startsWith('/api/scenarios'),
-            handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'jogadas' },
+            handler: 'NetworkFirst',
+            options: { cacheName: 'jogadas', networkTimeoutSeconds: 4 },
           },
         ],
       },

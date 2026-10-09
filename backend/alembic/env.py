@@ -6,7 +6,8 @@ from app.config import get_settings
 from app.db import Base
 
 config = context.config
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+# O ConfigParser trata '%' como interpolação; senha codificada na URL (%40...) precisa de '%%'.
+config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 target_metadata = Base.metadata
 
 

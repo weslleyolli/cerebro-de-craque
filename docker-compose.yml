@@ -1,14 +1,17 @@
+# Antes de subir: cp .env.example .env e preencha os segredos.
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: craque
-      POSTGRES_PASSWORD: craque
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
       POSTGRES_DB: craque
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Só nesta máquina, para desenvolver a API fora do Docker. Nunca na rede.
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U craque"]
       interval: 3s
@@ -17,19 +20,20 @@ services:
 
   api:
     build: ./backend
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg://craque:craque@db:5432/craque
-      JWT_SECRET: ${JWT_SECRET:-somente-desenvolvimento-troque-este-segredo}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      CORS_ORIGINS: '["http://localhost:8080"]'
+      DATABASE_URL: postgresql+psycopg://craque:${POSTGRES_PASSWORD}@db:5432/craque
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      CORS_ORIGINS: '["http://localhost:${WEB_PORT:-8080}"]'
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "8000:8000"
+    # Sem porta publicada: o nginx do serviço web fala com a API pela rede interna.
 
   web:
     build: ./frontend
+    restart: unless-stopped
     depends_on:
       - api
     ports:

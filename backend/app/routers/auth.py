@@ -28,7 +28,7 @@ def register(body: RegisterIn, db: DbSession) -> TokenOut:
 @router.post("/login", response_model=TokenOut)
 def login(body: LoginIn, db: DbSession) -> TokenOut:
     user = _by_email(db, body.email)
-    if user is None or not verify_password(body.password, user.password_hash):
+    if not verify_password(body.password, user.password_hash if user else None) or user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha incorretos.")
     return TokenOut(access_token=create_access_token(user.id), user=UserOut.model_validate(user))
 

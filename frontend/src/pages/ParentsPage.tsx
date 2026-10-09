@@ -68,9 +68,10 @@ function Dashboard() {
   const stats = useStats(player.id)
   const scenarios = useScenarios()
 
-  if (stats.isPending || scenarios.isPending) return <Loading />
-  if (stats.isError) return <ErrorNote error={stats.error} onRetry={() => stats.refetch()} />
-  if (scenarios.isError) return <ErrorNote error={scenarios.error} onRetry={() => scenarios.refetch()} />
+  if (!stats.data && stats.isError) return <ErrorNote error={stats.error} onRetry={() => stats.refetch()} />
+  if (!scenarios.data && scenarios.isError)
+    return <ErrorNote error={scenarios.error} onRetry={() => scenarios.refetch()} />
+  if (!stats.data || !scenarios.data) return <Loading />
 
   const st = stats.data
   const byId = new Map(scenarios.data.map((s) => [s.id, s]))

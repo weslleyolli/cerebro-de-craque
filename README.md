@@ -15,27 +15,32 @@ acompanham, numa área própria, onde a criança lê bem o jogo e onde tem dific
 ## Rodar tudo com Docker
 
 ```bash
+cp .env.example .env      # preencha POSTGRES_PASSWORD e JWT_SECRET
 docker compose up --build
 ```
 
 Abra http://localhost:8080. O nginx serve o app e repassa `/api` para a API,
-que aplica as migrações e carrega as jogadas ao subir.
+que aplica as migrações e carrega as jogadas ao subir. A API e o banco não
+ficam expostos na rede: o banco só aceita conexões desta máquina
+(`127.0.0.1:${DB_PORT:-5432}`), e a API só é acessível pelo nginx.
 
-Variáveis úteis: `JWT_SECRET`, `ENVIRONMENT=production`, `WEB_PORT` (padrão 8080)
-e `DB_PORT` (padrão 5432).
+Variáveis do `.env`: `POSTGRES_PASSWORD` e `JWT_SECRET` (obrigatórias),
+`ENVIRONMENT` (padrão `production`), `WEB_PORT` (padrão 8080) e `DB_PORT`
+(padrão 5432).
 
 ## Desenvolvimento
 
 Banco (ou use um Postgres local):
 
 ```bash
+cp .env.example .env      # se ainda não fez
 docker compose up -d db
 ```
 
 API, em `backend/` (precisa do [uv](https://docs.astral.sh/uv/)):
 
 ```bash
-cp .env.example .env
+cp .env.example .env      # backend/.env: aponte DATABASE_URL para o seu banco
 uv sync
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload        # http://localhost:8000/docs
@@ -104,13 +109,16 @@ frontend/
   e devolve as medalhas novas.
 - **Notas:** ótima leitura vale 3 pontos, "dá para melhorar" vale 1, escolha
   arriscada ou tempo esgotado vale 0.
+- **Medalhas ficam gravadas.** Uma medalha conquistada nunca é retirada, nem
+  quando entra uma jogada nova na categoria. "Apagar histórico" apaga as
+  decisões e as medalhas.
 - **Área dos pais.** Protegida por uma conta de multiplicação, para a criança
   não entrar por engano. Mostra acertos por categoria e por conceito, tempo médio
   de decisão, os últimos lances e um diagnóstico com sugestão de treino.
 
 ## API
 
-Documentação interativa em `/docs` com a API rodando.
+Documentação interativa em http://localhost:8000/docs com a API rodando em desenvolvimento (`uv run uvicorn ...`).
 
 | Método | Rota | O que faz |
 | --- | --- | --- |
@@ -148,8 +156,11 @@ tirá-la do app, marque `active = false` no banco.
 
 ## Publicar
 
-- Defina `JWT_SECRET` com pelo menos 32 caracteres e `ENVIRONMENT=production`.
-  A API se recusa a subir em produção com o segredo padrão.
+- Defina `JWT_SECRET` com pelo menos 32 caracteres. Fora de `ENVIRONMENT`
+  `development` ou `test`, a API se recusa a subir com um segredo fraco ou com o
+  de exemplo.
+- Login e cadastro aceitam até 10 tentativas por minuto por IP (nginx), e a API
+  limita quantos hashes de senha roda ao mesmo tempo.
 - Sirva com HTTPS: sem isso o celular não instala o app.
 - `CORS_ORIGINS` só importa se o app e a API ficarem em domínios diferentes.
   Com o nginx do `docker-compose.yml`, ficam no mesmo.

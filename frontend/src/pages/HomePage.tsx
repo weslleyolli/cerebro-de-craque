@@ -83,9 +83,10 @@ export function HomePage() {
   const update = useUpdatePlayer()
   const navigate = useNavigate()
 
-  if (scenarios.isPending || stats.isPending) return <Loading />
-  if (scenarios.isError) return <ErrorNote error={scenarios.error} onRetry={() => scenarios.refetch()} />
-  if (stats.isError) return <ErrorNote error={stats.error} onRetry={() => stats.refetch()} />
+  if (!scenarios.data && scenarios.isError)
+    return <ErrorNote error={scenarios.error} onRetry={() => scenarios.refetch()} />
+  if (!stats.data && stats.isError) return <ErrorNote error={stats.error} onRetry={() => stats.refetch()} />
+  if (!scenarios.data || !stats.data) return <Loading />
 
   const st = stats.data
   const byScenario = new Map(st.scenarios.map((s) => [s.scenario_id, s]))

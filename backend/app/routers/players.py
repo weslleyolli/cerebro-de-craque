@@ -1,10 +1,20 @@
+from datetime import datetime
+
 from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert
 
 from app.deps import CurrentUser, DbSession, OwnedPlayer
-from app.models import Attempt, Player, Scenario
+from app.models import Attempt, Player, PlayerMedal, Scenario
 from app.schemas import AttemptIn, AttemptOut, PlayerIn, PlayerOut, PlayerPatch, StatsOut
-from app.stats import POINTS, AttemptRow, ScenarioRow, compute_stats, medals
+from app.stats import (
+    MAX_DECISION_MS,
+    POINTS,
+    AttemptRow,
+    ScenarioRow,
+    compute_stats,
+    medals,
+)
 
 router = APIRouter(prefix="/api/players", tags=["jogadores"])
 
@@ -92,19 +102,38 @@ def record_attempt(body: AttemptIn, player: OwnedPlayer, db: DbSession) -> Attem
 
     before, scenarios = _history(db, player.id)
     earned_before = {m.id for m in medals(before, scenarios) if m.earned}
+    earned_before |= set(_stored_medals(db, player.id))
 
     attempt = Attempt(
         player_id=player.id,
         scenario_id=scenario.id,
         option_index=body.option_index,
         grade=grade,
-        decision_ms=body.decision_ms,
+        decision_ms=min(body.decision_ms, MAX_DECISION_MS),
     )
     db.add(attempt)
-    db.commit()
+    db.flush()
 
+    # Grava as medalhas conquistadas. O ON CONFLICT faz duas decisões simultâneas
+    # não comemorarem a mesma medalha duas vezes.
     after, _ = _history(db, player.id)
-    new_medals = [m for m in medals(after, scenarios) if m.earned and m.id not in earned_before]
+    earned_now = [m for m in medals(after, scenarios) if m.earned]
+    inserted: set[str] = set()
+    if earned_now:
+        stmt = (
+            insert(PlayerMedal)
+            .values(
+                [
+                    {"player_id": player.id, "medal_id": m.id, "earned_at": m.earned_at}
+                    for m in earned_now
+                ]
+            )
+            .on_conflict_do_nothing()
+            .returning(PlayerMedal.medal_id)
+        )
+        inserted = set(db.scalars(stmt))
+    db.commit()
+    new_medals = [m for m in earned_now if m.id in inserted and m.id not in earned_before]
 
     return AttemptOut(
         id=attempt.id,
@@ -118,14 +147,24 @@ def record_attempt(body: AttemptIn, player: OwnedPlayer, db: DbSession) -> Attem
     )
 
 
+def _stored_medals(db: DbSession, player_id: int) -> dict[str, datetime]:
+    rows = db.execute(
+        select(PlayerMedal.medal_id, PlayerMedal.earned_at).where(
+            PlayerMedal.player_id == player_id
+        )
+    )
+    return {medal_id: earned_at for medal_id, earned_at in rows}
+
+
 @router.get("/{player_id}/stats", response_model=StatsOut)
 def player_stats(player: OwnedPlayer, db: DbSession) -> StatsOut:
     attempts, scenarios = _history(db, player.id)
-    return compute_stats(player.id, attempts, scenarios)
+    return compute_stats(player.id, attempts, scenarios, _stored_medals(db, player.id))
 
 
 @router.delete("/{player_id}/attempts", status_code=status.HTTP_204_NO_CONTENT)
 def reset_attempts(player: OwnedPlayer, db: DbSession) -> Response:
     db.execute(delete(Attempt).where(Attempt.player_id == player.id))
+    db.execute(delete(PlayerMedal).where(PlayerMedal.player_id == player.id))
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

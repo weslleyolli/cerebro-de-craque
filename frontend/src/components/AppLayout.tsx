@@ -21,8 +21,9 @@ export function AppLayout() {
 
   if (status === 'loading') return <Loading />
   if (status === 'anonymous') return <Navigate to="/entrar" replace state={{ from: location.pathname }} />
-  if (players.isPending) return <Loading />
-  if (players.isError)
+  // Erro numa atualização em segundo plano não derruba a tela: continua com os dados que já tem.
+  if (!players.data && !players.isError) return <Loading />
+  if (!players.data)
     return (
       <div className="mx-auto max-w-xl px-4 py-10">
         <ErrorNote error={players.error} onRetry={() => players.refetch()} />

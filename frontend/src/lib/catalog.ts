@@ -52,3 +52,6 @@ export const OUTCOME_STYLE: Record<OutcomeKind, string> = {
 
 /** Tempo para decidir no modo "pausa com tempo". */
 export const TIME_LIMIT_MS = 8000
+
+/** Maior tempo de decisão guardado (o mesmo limite da API). */
+export const MAX_DECISION_MS = 120_000
