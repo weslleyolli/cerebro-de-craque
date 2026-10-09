@@ -48,6 +48,7 @@ const FIELD_MESSAGES: Record<string, string> = {
 }
 
 async function errorMessage(res: Response): Promise<string> {
+  if (res.status === 429) return 'Muitas tentativas seguidas. Espere um minuto e tente de novo.'
   try {
     const data: unknown = await res.json()
     const detail = (data as { detail?: unknown }).detail

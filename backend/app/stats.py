@@ -17,6 +17,8 @@ from app.schemas import (
 )
 
 CATEGORY_ORDER = ("ataque", "defesa", "transicao")
+# Tempo de decisão guardado no máximo: acima disso a criança largou o aparelho.
+MAX_DECISION_MS = 120_000
 POINTS = {"best": 3, "ok": 1, "bad": 0, "late": 0}
 FAST_MS = 3000
 RECENT_LIMIT = 15
@@ -157,14 +159,32 @@ def medals(attempts: Sequence[AttemptRow], scenarios: Sequence[ScenarioRow]) -> 
     ]
 
 
+def merge_stored(computed: list[MedalOut], stored: dict[str, datetime]) -> list[MedalOut]:
+    """Medalha guardada no banco continua conquistada, mesmo que a regra mude.
+
+    Ex.: "Camisa 10" pede todos os lances de ataque; quando entra uma jogada de
+    ataque nova, quem já tinha a medalha não a perde.
+    """
+    return [
+        m.model_copy(update={"earned": True, "earned_at": stored[m.id]}) if m.id in stored else m
+        for m in computed
+    ]
+
+
 def _avg(values: list[int]) -> int | None:
     return round(sum(values) / len(values)) if values else None
 
 
 def compute_stats(
-    player_id: int, attempts: Sequence[AttemptRow], scenarios: Sequence[ScenarioRow]
+    player_id: int,
+    attempts: Sequence[AttemptRow],
+    scenarios: Sequence[ScenarioRow],
+    stored_medals: dict[str, datetime] | None = None,
 ) -> StatsOut:
-    """`attempts` em ordem cronológica; `scenarios` são as jogadas ativas, na ordem do app."""
+    """`attempts` em ordem cronológica; `scenarios` são as jogadas ativas, na ordem do app.
+
+    `stored_medals` são as medalhas já gravadas para o jogador (id -> data).
+    """
     answered = [a.decision_ms for a in attempts if a.grade != "late"]
 
     categories = []
@@ -206,7 +226,7 @@ def compute_stats(
         best_streak=best_streak(attempts),
         categories=categories,
         scenarios=per_scenario,
-        medals=medals(attempts, scenarios),
+        medals=merge_stored(medals(attempts, scenarios), stored_medals or {}),
         diagnosis=diagnose(categories, per_scenario, len(attempts)),
         recent=[
             RecentAttempt(
@@ -240,8 +260,11 @@ def diagnose(
 
     weakest_scenario = None
     if weakest:
+        # Pode não haver candidata: as tentativas da categoria podem ser todas em
+        # jogadas que saíram do app (active = false).
         candidates = [s for s in scenarios if s.category == weakest and s.attempts]
-        weakest_scenario = min(candidates, key=lambda s: s.best / s.attempts).scenario_id
+        if candidates:
+            weakest_scenario = min(candidates, key=lambda s: s.best / s.attempts).scenario_id
 
     return Diagnosis(
         strongest=strongest,

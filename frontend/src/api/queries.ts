@@ -77,6 +77,8 @@ export function useRecordAttempt(playerId: number) {
   return useMutation({
     mutationFn: (body: { scenario_id: string; option_index: number | null; decision_ms: number }) =>
       api<AttemptResult>(`/api/players/${playerId}/attempts`, { method: 'POST', body }),
+    // Sem internet, falha na hora (e o treino avisa) em vez de ficar pausada sem ninguém saber.
+    networkMode: 'always',
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.stats(playerId) }),
   })
 }

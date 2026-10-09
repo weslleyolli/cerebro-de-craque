@@ -156,7 +156,8 @@ class AttemptIn(BaseModel):
     scenario_id: str
     # None quando o tempo da pausa acabou.
     option_index: int | None = Field(default=None, ge=0, le=3)
-    decision_ms: int = Field(ge=0, le=120_000)
+    # Aceita qualquer duração; o servidor guarda no máximo MAX_DECISION_MS.
+    decision_ms: int = Field(ge=0, le=86_400_000)
 
 
 class MedalOut(BaseModel):

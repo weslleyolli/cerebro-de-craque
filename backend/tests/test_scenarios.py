@@ -42,3 +42,25 @@ def test_validation_catches_unknown_player():
     raw["options"][0]["target"] = "a9"
     with pytest.raises(ValueError, match="desconhecidos"):
         ScenarioIn.model_validate(raw)
+
+
+def test_diagnosis_without_candidate_scenario():
+    """Categoria mais fraca só com tentativas em jogadas que saíram do app."""
+    from app.schemas import CategoryStats
+    from app.stats import diagnose
+
+    cats = [
+        CategoryStats(
+            category="ataque", attempts=2, best=2, ok=0, bad=0, timeouts=0, avg_decision_ms=1000
+        ),
+        CategoryStats(
+            category="defesa", attempts=0, best=0, ok=0, bad=0, timeouts=0, avg_decision_ms=None
+        ),
+        CategoryStats(
+            category="transicao", attempts=1, best=0, ok=0, bad=1, timeouts=0, avg_decision_ms=1000
+        ),
+    ]
+    d = diagnose(cats, [], total=3)
+    assert d is not None
+    assert d.weakest == "transicao"
+    assert d.weakest_scenario_id is None

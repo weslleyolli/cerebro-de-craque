@@ -101,3 +101,15 @@ class Attempt(Base):
     grade: Mapped[str] = mapped_column(String(8))
     decision_ms: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PlayerMedal(Base):
+    """Medalha conquistada. Gravada para nunca ser retirada da criança."""
+
+    __tablename__ = "player_medals"
+
+    player_id: Mapped[int] = mapped_column(
+        ForeignKey("players.id", ondelete="CASCADE"), primary_key=True
+    )
+    medal_id: Mapped[str] = mapped_column(String(20), primary_key=True)
+    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
