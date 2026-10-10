@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 
 import { useRecordAttempt, useScenarios, useStats } from '../api/queries'
-import type { Medal, Player, Point, Scenario, ScenarioOption } from '../api/types'
+import type { Medal, Player, Scenario, ScenarioOption } from '../api/types'
 import { useActivePlayer } from '../auth/PlayerProvider'
 import { Button, ErrorNote, GradeChip, Loading, MedalCard, Verdict } from '../components/ui'
 import { Court } from '../game/Court'
@@ -13,7 +13,7 @@ import { buildQueue, closingMessage, isMode, sessionLabel, summarize } from '../
 import type { Mode, SessionResult } from '../game/session'
 import { directionWord, seenRecently, yawTo } from '../game/scan'
 import { useBoardAnimation } from '../game/useBoardAnimation'
-import { AWARE_WINDOW_MS, awareTarget, newVision, optionAnchor } from '../game/vision'
+import { AWARE_WINDOW_MS, applyStep, awareTarget, newVision, optionAnchor } from '../game/vision'
 import type { ScanMode, Vision } from '../game/vision'
 import {
   CATEGORIES,
@@ -101,6 +101,8 @@ function Session({
   // Visão do jogador (3D) ou prancheta: a prancheta é para entender o lance depois,
   // ou o caminho quando o aparelho não abre o 3D.
   const [no3d, setNo3d] = useState(false)
+  // A visão 3D já abriu (o 3D é baixado na primeira vez e pode demorar).
+  const [view3dReady, setView3dReady] = useState(false)
   const [topView, setTopView] = useState(false)
   const [found, setFound] = useState<number[]>([])
   const [liveScans, setLiveScans] = useState(0)
@@ -130,20 +132,26 @@ function Session({
     setPhase(p)
   }, [])
 
-  // Cada lance: posiciona as peças, roda a jogada (a criança olha em volta) e congela.
-  useEffect(() => {
+  // Cada lance: posiciona as peças e zera a memória da visão antes do primeiro
+  // quadro do lance novo (a visão 3D não pode contar nada do lance anterior).
+  useLayoutEffect(() => {
     vision.current = newVision()
     reset(initialState(sc))
+  }, [sc, reset])
+
+  // Roda a jogada (a criança olha em volta) e congela. Com o 3D, só depois que a
+  // visão abriu: antes disso a criança não vê a jogada e nada seria contado.
+  const canRun = !use3d || view3dReady
+  useEffect(() => {
+    if (!canRun) return
     let alive = true
     ;(async () => {
       if (!(await wait(900)) || !alive) return
       if (!(await play(sc.intro)) || !alive) return
-      // Incorpora o passo para o lado à posição da criança no lance.
+      // Incorpora o passo para o lado ao lance (a bola que chega vai junto).
       const s0 = current()
       if (!s0) return
-      const off = vision.current.offset
-      const you = s0.positions.v
-      const s = you && (off[0] || off[1]) ? { ...s0, positions: { ...s0.positions, v: [you[0] + off[0], you[1] + off[1]] as Point } } : s0
+      const s = applyStep(s0, vision.current.offset)
       vision.current.offset = [0, 0]
       reset(s)
       freezeRef.current = s
@@ -169,7 +177,7 @@ function Session({
       alive = false
       cancel()
     }
-  }, [sc, reset, wait, play, current, cancel, go])
+  }, [sc, canRun, reset, wait, play, current, cancel, go])
 
   // Contador de olhadas na tela enquanto a jogada roda.
   useEffect(() => {
@@ -372,6 +380,7 @@ function Session({
                       ghostYaw={ghostYaw}
                       onFound={setFound}
                       onPick={(i) => void choose(i)}
+                      onReady={() => setView3dReady(true)}
                       onUnavailable={() => setNo3d(true)}
                     />
                   </div>

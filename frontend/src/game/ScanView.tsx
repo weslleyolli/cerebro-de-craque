@@ -20,9 +20,10 @@ import {
   BODY_RADIUS,
   ScanTracker,
   TALL_RADIUS,
+  VISION_FOV,
+  VISION_HFOV,
   applyAI,
   dirFromYaw,
-  horizontalFov,
   inView,
   laneClear,
   memoryOpacity,
@@ -35,7 +36,7 @@ import { HERO_KIT, rivalKit, teamKit } from './three/anime'
 import type { Kit } from './three/anime'
 import { Ball, CourtModel, FLAT, Figure, LABEL_HEIGHT, usePalette } from './three/scene'
 import type { Palette } from './three/scene'
-import { awareTarget, optionAnchor } from './vision'
+import { awareTarget, initialYaw, optionAnchor } from './vision'
 import type { ScanMode, Vision } from './vision'
 
 // ---------- Câmera ----------
@@ -48,7 +49,6 @@ const PITCH_DEFAULT = -0.2
 /** Sem mexer na tela por este tempo, a cabeça volta a acompanhar a bola. */
 const IDLE_FOLLOW_MS = 1200
 const FOLLOW_SPEED = 1.6
-const FOV = 70
 const PITCH_MIN = -0.55
 const PITCH_MAX = 0.25
 const DRAG_YAW = 0.0072 // rad por pixel (~0,4°)
@@ -84,8 +84,10 @@ function Rig({
   onFound,
   showOptions,
   lastInput,
+  onReady,
 }: {
   lastInput: MutableRefObject<number>
+  onReady?: () => void
   shared: MutableRefObject<Shared>
   yaw: MutableRefObject<number>
   pitch: MutableRefObject<number>
@@ -99,11 +101,17 @@ function Rig({
 }) {
   const look = useMemo(() => new THREE.Vector3(), [])
   const foundKey = useRef('')
+  const started = useRef(false)
 
-  useFrame(({ camera, size }, dt) => {
+  useFrame(({ camera }, dt) => {
     const step = Math.min(dt, 0.1)
     const s = shared.current
     const now = performance.now()
+    // Primeiro quadro: a visão já está contando o que a criança vê, o lance pode começar.
+    if (!started.current) {
+      started.current = true
+      onReady?.()
+    }
 
     // Setas do teclado viram a cabeça (computador).
     if (keys.current.size) lastInput.current = now
@@ -137,9 +145,9 @@ function Rig({
 
     // O que a criança está vendo agora. Conta o que os olhos DELA veriam (da
     // posição dela), não o da câmera atrás do ombro: assim quem está na frente
-    // tapa de verdade, e o passo para o lado é o que destapa.
-    const cam = camera as THREE.PerspectiveCamera
-    const hfov = horizontalFov(cam.fov, size.width / Math.max(1, size.height))
+    // tapa de verdade, e o passo para o lado é o que destapa. A abertura é fixa
+    // (VISION_HFOV), não a da tela: o que conta como visto é igual em qualquer aparelho.
+    const hfov = VISION_HFOV
     const v = vision.current
     const eyes = s.you
     v.yaw = yaw.current
@@ -238,7 +246,7 @@ function LabelProjector({ labels, nodes }: { labels: MutableRefObject<Label[]>; 
 const MAP_W = 78
 const MAP_H = 156
 
-function Minimap({ vision, scenario, you, ball, hfov }: { vision: MutableRefObject<Vision>; scenario: Scenario; you: Point; ball: Point; hfov: number }) {
+function Minimap({ vision, scenario, you, ball }: { vision: MutableRefObject<Vision>; scenario: Scenario; you: Point; ball: Point }) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 120)
@@ -250,8 +258,8 @@ function Minimap({ vision, scenario, you, ball, hfov }: { vision: MutableRefObje
   const sy = MAP_H / COURT.length
   const cone = (() => {
     const r = 9
-    const a1 = dirFromYaw(v.yaw - hfov / 2)
-    const a2 = dirFromYaw(v.yaw + hfov / 2)
+    const a1 = dirFromYaw(v.yaw - VISION_HFOV / 2)
+    const a2 = dirFromYaw(v.yaw + VISION_HFOV / 2)
     return `M${you[0] * sx},${you[1] * sy} L${(you[0] + a1[0] * r) * sx},${(you[1] + a1[1] * r) * sy} L${(you[0] + a2[0] * r) * sx},${(you[1] + a2[1] * r) * sy} Z`
   })()
   return (
@@ -309,6 +317,8 @@ export interface ScanViewProps {
   /** Opções que já apareceram na tela durante a pausa. */
   onFound?: (found: number[]) => void
   onPick?: (optionIndex: number) => void
+  /** A visão 3D abriu e já está contando o que a criança vê. */
+  onReady?: () => void
 }
 
 export default function ScanView({
@@ -323,6 +333,7 @@ export default function ScanView({
   ghostYaw = null,
   onFound,
   onPick,
+  onReady,
 }: ScanViewProps) {
   const palette = usePalette()
   const [, forceRender] = useState(0)
@@ -337,7 +348,6 @@ export default function ScanView({
   const lastMoved = useRef(0)
   const youYaw = useCallback(() => yaw.current, [])
   const [dragged, setDragged] = useState(false)
-  const [hfov, setHfov] = useState(() => horizontalFov(FOV, 0.8))
 
   // Posições mostradas: o roteiro do lance + balanço defensivo + passo para o lado.
   const offset = vision.current.offset
@@ -348,11 +358,13 @@ export default function ScanView({
   }, [snapshot, scenario.ai, offset])
   const you = positions.v ?? [COURT.width / 2, COURT.length / 2]
 
-  // Lance novo: olha para a bola, zera a contagem.
+  // Lance novo: olha para a bola do começo do lance (não do quadro na tela, que
+  // ainda pode ser o fim do lance anterior) e zera a contagem.
   if (placedFor.current !== scenario.id) {
     placedFor.current = scenario.id
-    yaw.current = yawTo(you, snapshot.ball)
+    yaw.current = initialYaw(scenario)
     pitch.current = PITCH_DEFAULT
+    lastInput.current = 0
     tracker.current.reset()
   }
 
@@ -396,11 +408,20 @@ export default function ScanView({
       }
     }
     const up = (e: KeyboardEvent) => keys.current.delete(e.key)
+    // Trocou de janela com a seta apertada: o keyup vai para a outra janela.
+    const release = () => keys.current.clear()
+    const hidden = () => {
+      if (document.hidden) release()
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('blur', release)
+    document.addEventListener('visibilitychange', hidden)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', release)
+      document.removeEventListener('visibilitychange', hidden)
     }
   }, [])
 
@@ -412,13 +433,22 @@ export default function ScanView({
   }
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const d = drag.current
-    if (!d || mode === 'follow' || mode === 'ghost') return
+    if (!d) return
+    // Soltou o botão fora da visão (o pointerup não chegou aqui): o arrasto acabou.
+    if (e.buttons === 0) {
+      drag.current = null
+      return
+    }
+    if (mode === 'follow' || mode === 'ghost') return
     const dx = e.clientX - d.x
     const dy = e.clientY - d.y
     d.x = e.clientX
     d.y = e.clientY
     d.moved += Math.abs(dx) + Math.abs(dy)
     lastMoved.current = d.moved
+    // Arrasto de verdade: segue recebendo o movimento e o soltar mesmo fora da visão.
+    const el = e.currentTarget
+    if (d.moved > 8 && !el.hasPointerCapture(e.pointerId)) el.setPointerCapture(e.pointerId)
     lastInput.current = performance.now()
     yaw.current += dx * DRAG_YAW
     pitch.current = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch.current - dy * DRAG_PITCH))
@@ -528,9 +558,8 @@ export default function ScanView({
     >
       <Canvas
         dpr={[1, 1.75]}
-        camera={{ fov: FOV, near: 0.05, far: 140 }}
+        camera={{ fov: VISION_FOV, near: 0.05, far: 140 }}
         gl={{ antialias: true }}
-        onCreated={({ size }) => setHfov(horizontalFov(FOV, size.width / Math.max(1, size.height)))}
       >
         <SceneContents
           palette={palette}
@@ -559,13 +588,14 @@ export default function ScanView({
           onFound={handleFound}
           showOptions={showOptions}
           lastInput={lastInput}
+          onReady={onReady}
         />
         <LabelProjector labels={labels} nodes={nodes} />
       </Canvas>
 
       {/* Minimapa: só o que foi visto há pouco. */}
       <div className="pointer-events-none absolute top-2 left-2">
-        <Minimap vision={vision} scenario={scenario} you={you} ball={snapshot.ball} hfov={hfov} />
+        <Minimap vision={vision} scenario={scenario} you={you} ball={snapshot.ball} />
       </div>
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
