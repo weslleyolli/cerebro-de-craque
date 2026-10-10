@@ -169,7 +169,7 @@
     },
     "aware": {
       "see": "a1",
-      "label": "o pivô livre nas suas costas"
+      "label": "o pivô livre"
     },
     "options": [
       {
@@ -756,7 +756,7 @@
     ],
     "aware": {
       "see": "o2",
-      "label": "o marcador chegando nas suas costas"
+      "label": "o marcador chegando para roubar"
     },
     "options": [
       {
@@ -1033,7 +1033,7 @@
     ],
     "aware": {
       "see": "o2",
-      "label": "o ala deles correndo nas suas costas"
+      "label": "o ala deles infiltrando"
     },
     "options": [
       {
@@ -1315,7 +1315,7 @@
     ],
     "aware": {
       "see": "o2",
-      "label": "o ala deles aberto nas suas costas"
+      "label": "o ala deles aberto"
     },
     "options": [
       {
@@ -1581,7 +1581,7 @@
     ],
     "aware": {
       "see": "o4",
-      "label": "o fixo deles passando nas suas costas"
+      "label": "o fixo deles passando por trás"
     },
     "options": [
       {
@@ -1867,7 +1867,7 @@
     ],
     "aware": {
       "see": "a1",
-      "label": "o pivô saindo em velocidade, atrás do pivô deles"
+      "label": "o pivô saindo em velocidade"
     },
     "options": [
       {

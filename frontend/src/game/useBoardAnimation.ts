@@ -16,6 +16,7 @@ export function useBoardAnimation(speed: number) {
   const tokenRef = useRef(0)
   const speedRef = useRef(speed)
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  const [slowMo, setSlowMo] = useState(false)
 
   useEffect(() => {
     speedRef.current = speed
@@ -23,12 +24,14 @@ export function useBoardAnimation(speed: number) {
 
   const cancel = useCallback(() => {
     tokenRef.current++
+    setSlowMo(false)
   }, [])
 
   useEffect(() => cancel, [cancel])
 
   const reset = useCallback((state: BoardState) => {
     tokenRef.current++
+    setSlowMo(false)
     stateRef.current = state
     setSnapshot(snapshotOf(state))
   }, [])
@@ -42,9 +45,15 @@ export function useBoardAnimation(speed: number) {
           if (token !== tokenRef.current) return resolve(false)
           const frame = frames[i++]
           const from = stateRef.current
-          if (!frame || !from) return resolve(true)
+          if (!frame || !from) {
+            setSlowMo(false)
+            return resolve(true)
+          }
           const to = applyFrame(from, frame)
-          const duration = frame.ms * speedRef.current
+          // Câmera lenta ("bullet time"): o trecho fica mais longo.
+          const slow = frame.slow && frame.slow > 0 ? frame.slow : 1
+          setSlowMo(slow < 1)
+          const duration = (frame.ms * speedRef.current) / slow
           const t0 = performance.now()
           const tick = (now: number) => {
             if (token !== tokenRef.current) return resolve(false)
@@ -74,5 +83,5 @@ export function useBoardAnimation(speed: number) {
 
   const current = useCallback(() => stateRef.current, [])
 
-  return { snapshot, reset, play, wait, cancel, current }
+  return { snapshot, slowMo, reset, play, wait, cancel, current }
 }

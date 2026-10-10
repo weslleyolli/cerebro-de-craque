@@ -210,6 +210,13 @@ export function HomePage() {
             checked={player.settings.slow}
             onChange={(slow) => setSetting({ slow })}
           />
+          <Toggle
+            id="set-hints"
+            label="Realces táticos na pausa"
+            hint="Zona vermelha, corredor verde e companheiros brilhando. Desligue para o desafio."
+            checked={player.settings.hints ?? true}
+            onChange={(hints) => setSetting({ hints })}
+          />
         </div>
         {update.isError && <ErrorNote error={update.error} />}
       </section>

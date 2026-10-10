@@ -57,7 +57,12 @@ describe('sessão', () => {
       { scenarioId: 'a2', grade: 'ok', ms: 4000 },
       { scenarioId: 'a3', grade: 'late', ms: null },
     ])
-    expect(r).toEqual({ points: 4, best: 1, avgMs: 3000 })
+    expect(r).toEqual({ points: 4, best: 1, avgMs: 3000, avgScans: null })
+    const withScans = summarize([
+      { scenarioId: 'a1', grade: 'best', ms: 2000, scans: 3 },
+      { scenarioId: 'a2', grade: 'ok', ms: 2000, scans: 1 },
+    ])
+    expect(withScans.avgScans).toBe(2)
     expect(closingMessage(3, 3)).toBe('Leitura perfeita!')
     expect(closingMessage(0, 3)).toBe('Todo craque começa assim.')
   })

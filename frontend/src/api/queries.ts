@@ -75,7 +75,13 @@ export function useDeletePlayer() {
 export function useRecordAttempt(playerId: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { scenario_id: string; option_index: number | null; decision_ms: number }) =>
+    mutationFn: (body: {
+      scenario_id: string
+      option_index: number | null
+      decision_ms: number
+      scans?: number | null
+      aware?: boolean | null
+    }) =>
       api<AttemptResult>(`/api/players/${playerId}/attempts`, { method: 'POST', body }),
     // Sem internet, falha na hora (e o treino avisa) em vez de ficar pausada sem ninguém saber.
     networkMode: 'always',

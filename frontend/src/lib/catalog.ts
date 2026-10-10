@@ -5,18 +5,18 @@ export const CATEGORY_ORDER: Category[] = ['ataque', 'defesa', 'transicao']
 export const CATEGORIES: Record<Category, { name: string; blurb: string; tip: string }> = {
   ataque: {
     name: 'Ataque',
-    blurb: 'Contra-ataque, tabela e jogo de pivô.',
+    blurb: 'Receber na ala: tocar de primeira, girar e arrancar ou proteger a bola.',
     tip: 'No jogo, repare se a criança olha para os companheiros antes de receber. Quem já olhou decide mais rápido.',
   },
   defesa: {
     name: 'Defesa',
-    blurb: 'Cobertura, linha de passe e marcação 1 contra 1.',
-    tip: 'Depois do jogo, pergunte: onde estava a bola, onde estava o seu jogador e quem fazia a cobertura? Falar sobre o lance fixa a leitura.',
+    blurb: 'Defender na ala sem perder quem corre nas suas costas.',
+    tip: 'Depois do jogo, pergunte: quem passou nas suas costas naquele lance? Falar sobre o lance fixa o hábito de olhar para trás.',
   },
   transicao: {
     name: 'Transição',
-    blurb: 'Os segundos depois de perder ou de roubar a bola.',
-    tip: 'Combinem uma palavra-gatilho, como "perdeu, aperta". Ela ajuda a reagir sem parar para pensar.',
+    blurb: 'Os segundos depois de roubar ou recuperar a bola na ala.',
+    tip: 'Combinem uma pergunta para a hora de roubar a bola: "quem está livre na frente?". Ela vira hábito e a criança passa a olhar antes de receber.',
   },
 }
 
@@ -33,6 +33,7 @@ export const OPTION_TYPES: Record<OptionType, string> = {
   passe: 'Passe',
   chute: 'Chute',
   drible: 'Drible',
+  conducao: 'Condução',
   proteger: 'Proteger',
   posicao: 'Posição',
   pressao: 'Pressão',

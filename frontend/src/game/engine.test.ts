@@ -25,6 +25,10 @@ const scenario: Scenario = {
   face: { a1: 'down' },
   start: { positions: { v: [6, 22], a2: [15, 22], a1: [10, 12], o1: [10, 11] }, ball: 'v' },
   intro: [],
+  threats: [],
+  ai: {},
+  tall: [],
+  aware: null,
   options: [
     {
       type: 'passe', label: 'Tocar', target: 'a2', hint: null, grade: 'best',

@@ -101,11 +101,33 @@ frontend/
 
 - **Conta do responsável.** Pai, mãe ou treinador cria a conta. Cada criança é
   um perfil (`player`) com pontos, medalhas e ajustes próprios.
-- **Pausa tática.** O motor (`frontend/src/game/engine.ts`) interpola posições
-  entre trechos da jogada. A bola acompanha quem conduz e viaja sozinha no passe
-  e no chute.
-- **Nota no servidor.** O app envia só a opção escolhida e o tempo de decisão. A
-  API busca a nota na jogada (`best`, `ok`, `bad`, ou `late` quando o tempo acaba)
+- **Visão do jogador ("scanning").** A câmera fica atrás do ombro da criança, na
+  altura dos olhos, e ela arrasta o dedo para virar a cabeça (no computador, as
+  setas também viram). Sem mexer, a cabeça acompanha a bola, como no jogo; olhar
+  em volta é o gesto de propósito, e cada olhada é contada.
+- **Memória e ponto cego.** O minimapa só mostra o que ela viu há pouco; quem
+  fica fora da visão some em uns 3 segundos. Um adversário alto na frente tapa
+  quem está atrás dele, e os botões de passo para o lado destapam. A visão conta a
+  partir dos olhos da criança, não da câmera.
+- **Marcadores vivos.** Alguns marcadores fazem o balanço defensivo (acompanham a
+  bola de um lado para o outro) e um deles vem pressionar.
+- **Câmera lenta e pausa.** Antes de a bola chegar, a jogada fica lenta e
+  congela. Na pausa, ela gira 360°, vê no chão a zona vermelha de quem vem
+  pressionar e o corredor verde de passe ou de espaço livre (companheiros numa
+  boa linha de passe brilham), e escolhe uma das opções, que aparecem como
+  hologramas na quadra. Só dá para escolher o que ela encontrou olhando em volta.
+- **Retorno.** Depois da escolha, a câmera acompanha a bola. O retorno diz quantas
+  vezes ela olhou em volta e se viu o que importava antes de receber (ou se um
+  adversário tapava). Na escolha errada, o "fantasma" volta à pausa, vira a
+  câmera para onde ela devia ter olhado e mostra a melhor jogada.
+- **Sempre como ala.** Os 9 lances colocam a criança como ala esquerdo ou
+  direito (o servidor recusa jogada em que ela seja pivô ou fixo).
+- **Motor do lance.** `frontend/src/game/engine.ts` interpola posições entre
+  trechos da jogada; `scan.ts` tem a visão (campo de visão, quem tapa, linhas de
+  passe, contagem de olhadas). A prancheta 2D continua para ver o lance de cima no
+  retorno, e é o caminho quando o aparelho não abre o 3D.
+- **Nota no servidor.** O app envia a opção escolhida, o tempo de decisão e o
+  escaneamento (olhadas e se viu o lance). A API busca a nota na jogada (`best`, `ok`, `bad`, ou `late` quando o tempo acaba)
   e devolve as medalhas novas.
 - **Notas:** ótima leitura vale 3 pontos, "dá para melhorar" vale 1, escolha
   arriscada ou tempo esgotado vale 0.
@@ -113,8 +135,9 @@ frontend/
   quando entra uma jogada nova na categoria. "Apagar histórico" apaga as
   decisões e as medalhas.
 - **Área dos pais.** Protegida por uma conta de multiplicação, para a criança
-  não entrar por engano. Mostra acertos por categoria e por conceito, tempo médio
-  de decisão, os últimos lances e um diagnóstico com sugestão de treino.
+  não entrar por engano. Mostra acertos por categoria e por conceito, olhadas em
+  volta por lance, quantas vezes viu o lance antes de receber, tempo médio de
+  decisão, os últimos lances e um diagnóstico com sugestão de treino.
 
 ## API
 
@@ -142,17 +165,26 @@ arquivo ao subir; para carregar sem reiniciar, rode `uv run python -m app.seed`.
   O time da criança sempre ataca para cima.
 - **Jogadores:** `v` é a criança. `a1`, `a2` e `f` são companheiros e `o1` a `o4`
   são adversários. Os goleiros `gk` e `o0` entram sozinhos, se não forem listados.
-- **Etiquetas:** `tags` dá as letras dos companheiros (AE, AD, P, F).
+- **Etiquetas:** `tags` dá as letras dos jogadores. `tags.v` precisa ser `AE` ou
+  `AD`: a criança é sempre ala.
 - **Direção:** `face` diz quem joga de costas (`"down"`), como o pivô.
 - **Câmera:** `view.top` e `view.bottom` definem o pedaço da quadra que aparece.
-- **Trechos da animação:** `intro` roda antes da pausa. Cada opção tem os seus
-  `frames`. Cada trecho tem `ms` (duração), `moves` (para onde cada um vai) e
-  `ball` (com quem fica a bola, ou um ponto da quadra).
+- **Trechos da animação:** `intro` roda antes da pausa (dê uns 5 segundos para a
+  criança olhar em volta). Cada opção tem os seus `frames`. Cada trecho tem `ms`
+  (duração), `moves` (para onde cada um vai), `ball` (com quem fica a bola, ou um
+  ponto da quadra) e, se quiser, `slow` (câmera lenta: `0.3` deixa o trecho mais de
+  3 vezes mais lento). Termine a `intro` com a bola chegando perto da criança, em
+  câmera lenta.
 - **Opções:** de 2 a 4. Exatamente uma é `best`. Use `target` para um passe a um
-  companheiro, ou `hint` para a seta apontar um lugar da quadra.
+  companheiro, ou `hint` para um lugar da quadra (espaço para conduzir, posição
+  para defender). `short` é o texto do holograma (ex.: "Tocar de primeira").
+- **Escaneamento:** `threats` lista quem vem pressionar (zona vermelha), `ai` põe
+  marcadores no balanço defensivo (`"cercar"`), `tall` deixa um jogador alto (tapa
+  mais a visão) e `aware` diz o que a criança precisava ver antes de receber
+  (`{"see": "a1", "label": "o pivô livre"}`, ou um ponto da quadra em `see`).
 
-Nunca apague uma jogada que já foi jogada: as decisões apontam para ela. Para
-tirá-la do app, marque `active = false` no banco.
+Para tirar uma jogada do app, basta tirá-la do arquivo: ao subir, a API a marca
+como inativa e o histórico das crianças continua no banco.
 
 ## Publicar na internet (Netlify + Render + Neon, tudo gratuito)
 

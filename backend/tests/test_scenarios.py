@@ -78,7 +78,7 @@ def test_new_scenario_fields_are_served(client):
     s = client.get("/api/scenarios/ala-primeira").json()
     assert s["threats"] == ["o2"]
     assert s["ai"] == {"o3": "cercar", "o4": "cercar"}
-    assert s["aware"] == {"see": "a1", "label": "o pivô livre nas suas costas"}
+    assert s["aware"] == {"see": "a1", "label": "o pivô livre"}
     assert any(f.get("slow") for f in s["intro"])
     assert s["options"][0]["short"] == "Tocar de primeira"
 

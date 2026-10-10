@@ -49,14 +49,18 @@ export interface SessionResult {
   grade: Grade
   /** Tempo de decisão; null quando o tempo acabou. */
   ms: number | null
+  /** Olhadas em volta antes de receber; null sem a visão 3D. */
+  scans?: number | null
 }
 
 export function summarize(results: SessionResult[]) {
   const times = results.flatMap((r) => (r.ms == null ? [] : [r.ms]))
+  const scans = results.flatMap((r) => (r.scans == null ? [] : [r.scans]))
   return {
     points: results.reduce((n, r) => n + GRADES[r.grade].points, 0),
     best: results.filter((r) => r.grade === 'best').length,
     avgMs: times.length ? times.reduce((a, b) => a + b, 0) / times.length : null,
+    avgScans: scans.length ? scans.reduce((a, b) => a + b, 0) / scans.length : null,
   }
 }
 

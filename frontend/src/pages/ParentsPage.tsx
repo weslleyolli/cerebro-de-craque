@@ -107,10 +107,12 @@ function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
         {[
           [st.total_attempts, 'lances jogados'],
           [`${percent(st.best_count, st.total_attempts)}%`, 'ótimas leituras'],
+          [st.avg_scans == null ? '–' : st.avg_scans.toFixed(1).replace('.', ','), 'olhadas em volta por lance'],
+          [st.aware_rate == null ? '–' : `${Math.round(st.aware_rate * 100)}%`, 'viu o lance antes de receber'],
           [seconds(st.avg_decision_ms), 'tempo médio de decisão'],
           [st.points, 'pontos de leitura'],
         ].map(([value, label]) => (
@@ -173,6 +175,7 @@ function Dashboard() {
                   <th className="px-2.5 py-2 font-semibold">Lance</th>
                   <th className="px-2.5 py-2 font-semibold">Escolha</th>
                   <th className="px-2.5 py-2 font-semibold">Resultado</th>
+                  <th className="px-2.5 py-2 text-right font-semibold">Olhadas</th>
                   <th className="px-2.5 py-2 text-right font-semibold">Tempo</th>
                 </tr>
               </thead>
@@ -188,6 +191,7 @@ function Dashboard() {
                       <td className="px-2.5 py-2">
                         <GradeChip grade={a.grade} />
                       </td>
+                      <td className="px-2.5 py-2 text-right font-mono">{a.scans ?? '—'}</td>
                       <td className="px-2.5 py-2 text-right font-mono">
                         {a.grade === 'late' ? '—' : seconds(a.decision_ms)}
                       </td>
@@ -254,6 +258,22 @@ function DiagnosisText({ stats, name, scenarios }: { stats: Stats; name: string;
       {d.unplayed.length > 0 && (
         <p className="text-sm text-muted">
           Ainda sem lances de {d.unplayed.map((c) => CATEGORIES[c].name.toLowerCase()).join(' e ')}.
+        </p>
+      )}
+      {stats.avg_scans != null && (
+        <p className="text-sm">
+          Antes de receber, {name} olha em volta <b>{stats.avg_scans.toFixed(1).replace('.', ',')}</b>{' '}
+          {stats.avg_scans === 1 ? 'vez' : 'vezes'} por lance
+          {stats.aware_rate != null && (
+            <>
+              {' '}
+              e viu o que importava em <b>{Math.round(stats.aware_rate * 100)}%</b> dos lances
+            </>
+          )}
+          .{' '}
+          {stats.avg_scans < 2
+            ? 'Vale treinar o hábito de virar a cabeça duas ou três vezes antes de cada passe chegar.'
+            : 'Ótimo hábito: é olhando antes que se decide rápido.'}
         </p>
       )}
       {stats.avg_decision_ms != null && (

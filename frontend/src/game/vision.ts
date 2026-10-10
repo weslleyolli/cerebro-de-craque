@@ -1,0 +1,53 @@
+/**
+ * Memória visual da criança durante o lance, compartilhada entre a visão 3D e a
+ * tela do treino. Sem three.js aqui, para não puxar o 3D para o pacote principal.
+ */
+import type { Point, Scenario } from '../api/types'
+import { pointKey } from './scan'
+
+export type ScanMode = 'live' | 'frozen' | 'follow' | 'ghost'
+
+export interface Vision {
+  /** Quando cada jogador (id) ou ponto (pointKey) foi visto pela última vez (performance.now). */
+  lastSeen: Map<string, number>
+  /** Onde cada jogador estava quando foi visto pela última vez. */
+  lastPos: Map<string, Point>
+  /** Quando cada jogador estava no campo de visão, mas tapado por outro. */
+  lastBlocked: Map<string, number>
+  /** Olhadas em volta durante a jogada (antes da pausa). */
+  scans: number
+  /** Passo para o lado (metros, na quadra), ainda não incorporado ao lance. */
+  offset: Point
+  /** Para onde a criança está olhando agora. */
+  yaw: number
+}
+
+export function newVision(): Vision {
+  return { lastSeen: new Map(), lastPos: new Map(), lastBlocked: new Map(), scans: 0, offset: [0, 0], yaw: 0 }
+}
+
+/** Ponto que representa uma opção na quadra: o companheiro, o espaço ou a própria criança. */
+export function optionAnchor(scenario: Scenario, i: number, positions: Record<string, Point>): Point | null {
+  const o = scenario.options[i]
+  if (!o) return null
+  if (o.target) return positions[o.target] ?? null
+  if (o.hint) return o.hint
+  return positions.v ?? null
+}
+
+/** O que a criança precisava ver: chave na memória e ponto na quadra. */
+export function awareTarget(
+  scenario: Scenario,
+  positions: Record<string, Point>,
+): { key: string; at: Point } | null {
+  const see = scenario.aware?.see
+  if (!see) return null
+  if (typeof see === 'string') {
+    const at = positions[see]
+    return at ? { key: see, at } : null
+  }
+  return { key: pointKey(see), at: see }
+}
+
+/** Janela em que "ver antes de receber" vale: o que foi visto há mais tempo já mudou. */
+export const AWARE_WINDOW_MS = 4500
