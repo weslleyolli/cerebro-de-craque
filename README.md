@@ -154,13 +154,65 @@ arquivo ao subir; para carregar sem reiniciar, rode `uv run python -m app.seed`.
 Nunca apague uma jogada que já foi jogada: as decisões apontam para ela. Para
 tirá-la do app, marque `active = false` no banco.
 
-## Publicar
+## Publicar na internet (Netlify + Render + Neon, tudo gratuito)
 
-- Defina `JWT_SECRET` com pelo menos 32 caracteres. Fora de `ENVIRONMENT`
-  `development` ou `test`, a API se recusa a subir com um segredo fraco ou com o
-  de exemplo.
-- Login e cadastro aceitam até 10 tentativas por minuto por IP (nginx), e a API
-  limita quantos hashes de senha roda ao mesmo tempo.
-- Sirva com HTTPS: sem isso o celular não instala o app.
-- `CORS_ORIGINS` só importa se o app e a API ficarem em domínios diferentes.
-  Com o nginx do `docker-compose.yml`, ficam no mesmo.
+O Netlify só hospeda sites; ele não roda Python nem Postgres. Por isso são três
+serviços, cada um ligado a este repositório do GitHub:
+
+| Parte | Onde | Arquivo de configuração |
+| --- | --- | --- |
+| App (React, PWA) | Netlify | `netlify.toml` |
+| API (FastAPI) | Render | `render.yaml` e `backend/Dockerfile` |
+| Banco (PostgreSQL) | Neon | nenhum, só a connection string |
+
+Antes de começar, escolha o nome do site no Netlify, por exemplo
+`cerebro-de-craque`. O endereço será `https://cerebro-de-craque.netlify.app`, e
+a API precisa saber esse endereço.
+
+### 1. Banco no Neon
+
+1. Crie a conta em https://neon.com e um projeto novo, na região
+   **AWS US East 1 (N. Virginia)**, a mesma da API.
+2. Clique em **Connect**, **desligue** "Connection pooling" e copie a connection
+   string (`postgresql://...neon.tech/neondb?sslmode=require...`).
+
+### 2. API no Render
+
+1. Em https://render.com, **New > Blueprint**, conecte o GitHub e escolha este
+   repositório. O Render lê o `render.yaml` e mostra o serviço
+   `cerebro-de-craque-api`.
+2. Ele pede duas variáveis:
+   - `DATABASE_URL`: a connection string do Neon, do jeito que veio.
+   - `CORS_ORIGINS`: o endereço do site, ex.: `https://cerebro-de-craque.netlify.app`.
+     Vários endereços vão separados por vírgula.
+   O `JWT_SECRET` é gerado sozinho.
+3. Espere o deploy e abra `https://<seu-serviço>.onrender.com/api/health`.
+   Tem que aparecer `{"status":"ok"}`. A API cria as tabelas e carrega as
+   jogadas ao subir.
+
+### 3. App no Netlify
+
+1. Em https://app.netlify.com, **Add new project > Import an existing project**,
+   escolha GitHub e este repositório. O Netlify lê o `netlify.toml`.
+2. Antes do primeiro deploy, adicione a variável de ambiente `VITE_API_URL` com o
+   endereço da API no Render, sem barra no fim
+   (ex.: `https://cerebro-de-craque-api.onrender.com`). Sem ela, o build para
+   com uma mensagem explicando o que falta.
+3. Faça o deploy e troque o nome do projeto para o que você escolheu. Se o nome
+   for outro, atualize `CORS_ORIGINS` no Render.
+4. No celular, abra o endereço e use "Adicionar à tela de início".
+
+### Bom saber
+
+- **Plano gratuito do Render:** a API dorme depois de 15 minutos sem uso, e o
+  primeiro acesso depois disso demora até um minuto. O app avisa que o servidor
+  está acordando.
+- **Neon gratuito:** o banco fica guardado e não expira; ele só "dorme" sem uso e
+  acorda na primeira consulta.
+- **Novas versões:** cada push na `main` publica sozinho. O Render só refaz a API
+  quando algo muda em `backend/`.
+- **Segurança:** a API se recusa a subir com um `JWT_SECRET` fraco fora de
+  desenvolvimento. Login e cadastro aceitam até 10 tentativas por minuto por IP,
+  e a API limita quantos hashes de senha roda ao mesmo tempo.
+- **Docker:** no `docker-compose.yml` o nginx deixa app e API no mesmo endereço,
+  e aí `CORS_ORIGINS` e `VITE_API_URL` não são necessários.

@@ -1,0 +1,22 @@
+# Blueprint do Render: sobe a API (Python/FastAPI em Docker) a partir de backend/.
+# No Render: New > Blueprint > escolha este repositório. Ele pede os valores
+# marcados com sync: false (DATABASE_URL do Neon e CORS_ORIGINS do Netlify).
+services:
+  - type: web
+    name: cerebro-de-craque-api
+    runtime: docker
+    plan: free
+    region: virginia
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production

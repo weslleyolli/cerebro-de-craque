@@ -19,5 +19,7 @@ RUN useradd --create-home craque
 USER craque
 
 EXPOSE 8000
-# Aplica as migrações e sobe a API. As jogadas são carregadas no startup.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+# Aplica as migrações e sobe a API (as jogadas são carregadas no startup).
+# PORT vem da nuvem (Render); no docker-compose fica 8000. Os cabeçalhos
+# X-Forwarded-* do proxy da frente dão o IP real para o limite de login.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]

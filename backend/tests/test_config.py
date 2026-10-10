@@ -17,3 +17,24 @@ def test_weak_secret_is_refused_outside_dev(environment):
 @pytest.mark.parametrize("environment", ["development", "test"])
 def test_default_secret_is_fine_for_dev(environment):
     Settings(environment=environment, jwt_secret=DEFAULT_SECRET).check()
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "postgres://u:p@host/db?sslmode=require",
+        "postgresql://u:p@host/db?sslmode=require",
+        "postgresql+psycopg://u:p@host/db?sslmode=require",
+    ],
+)
+def test_database_url_gets_the_psycopg_driver(url):
+    """Neon e Render entregam a URL sem o driver; a API aceita como vier."""
+    s = Settings(database_url=url)
+    assert s.database_url == "postgresql+psycopg://u:p@host/db?sslmode=require"
+
+
+def test_cors_origins_accept_json_or_comma_list(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "https://craque.netlify.app/, http://localhost:5173")
+    assert Settings().cors_origins == ["https://craque.netlify.app", "http://localhost:5173"]
+    monkeypatch.setenv("CORS_ORIGINS", '["https://craque.netlify.app"]')
+    assert Settings().cors_origins == ["https://craque.netlify.app"]

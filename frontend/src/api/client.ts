@@ -87,5 +87,8 @@ export async function api<T>(
   if (res.status === 401 && token) onUnauthorized?.()
   if (!res.ok) throw new ApiError(res.status, await errorMessage(res))
   if (res.status === 204) return undefined as T
+  // Resposta em HTML no lugar de JSON: o app chamou o próprio site, não a API.
+  if (!(res.headers.get('content-type') ?? '').includes('application/json'))
+    throw new ApiError(res.status, 'O app não encontrou a API. Confira o endereço configurado em VITE_API_URL.')
   return (await res.json()) as T
 }

@@ -1,0 +1,27 @@
+# Netlify publica só o app (pasta frontend/). A API roda no Render e o banco no
+# Neon; o endereço da API entra pela variável VITE_API_URL, definida no painel
+# do Netlify (Site configuration > Environment variables).
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# App de página única: qualquer rota que não é arquivo abre o index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# O service worker precisa ser sempre o mais novo para o app se atualizar.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

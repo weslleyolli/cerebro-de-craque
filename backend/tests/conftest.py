@@ -5,6 +5,8 @@ os.environ.setdefault(
 )
 os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 os.environ["SEED_ON_STARTUP"] = "true"
+# Os testes fazem muitos cadastros seguidos do mesmo "IP".
+os.environ["AUTH_RATE_LIMIT_PER_MINUTE"] = "100000"
 
 from collections.abc import Iterator  # noqa: E402
 from pathlib import Path  # noqa: E402

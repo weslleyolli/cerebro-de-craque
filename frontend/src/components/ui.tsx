@@ -1,5 +1,5 @@
 import type { ComponentProps, InputHTMLAttributes, ReactNode } from 'react'
-import { useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 
 import type { Grade, Medal } from '../api/types'
 import { GRADES } from '../lib/catalog'
@@ -97,12 +97,23 @@ export function MedalCard({ medal }: { medal: Medal }) {
   )
 }
 
+const SLOW_MS = 6000
+
 export function Loading({ label = 'Carregando…' }: { label?: string }) {
+  // No plano gratuito a API dorme quando ninguém usa; a primeira visita a acorda.
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setSlow(true), SLOW_MS)
+    return () => clearTimeout(id)
+  }, [])
   return (
     <div className="grid min-h-[40vh] place-items-center text-muted" role="status">
-      <div className="flex items-center gap-3">
-        <span className="size-3 animate-blink rounded-full bg-us motion-reduce:animate-none" />
-        {label}
+      <div className="flex max-w-xs flex-col items-center gap-2 text-center">
+        <div className="flex items-center gap-3">
+          <span className="size-3 animate-blink rounded-full bg-us motion-reduce:animate-none" />
+          {label}
+        </div>
+        {slow && <p className="text-sm">O servidor estava descansando e está acordando. Pode levar até um minuto.</p>}
       </div>
     </div>
   )
