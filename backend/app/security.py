@@ -3,14 +3,18 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 from pwdlib import PasswordHash
+from pwdlib.hashers.argon2 import Argon2Hasher
 
 from app.config import get_settings
 
 ALGORITHM = "HS256"
-_hasher = PasswordHash.recommended()
+# Argon2id com a configuração mínima da OWASP (19 MiB, 2 passadas): segura e cabe
+# num servidor pequeno (o plano gratuito do Render tem 512 MB). Hashes antigos,
+# feitos com outros parâmetros, continuam sendo verificados normalmente.
+_hasher = PasswordHash((Argon2Hasher(memory_cost=19_456, time_cost=2, parallelism=1),))
 
-# Cada hash Argon2 usa ~64 MiB. Limitar quantos rodam juntos evita que uma
-# rajada de logins derrube o servidor por falta de memória.
+# Limitar quantos hashes rodam juntos evita que uma rajada de logins derrube o
+# servidor por falta de memória.
 _ARGON2_SLOTS = threading.BoundedSemaphore(4)
 _DUMMY_HASH = _hasher.hash("senha-que-ninguem-usa")
 

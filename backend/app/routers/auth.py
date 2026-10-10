@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 
 from app.deps import CurrentUser, DbSession
 from app.models import User
+from app.ratelimit import limit_auth
 from app.schemas import LoginIn, RegisterIn, TokenOut, UserOut
 from app.security import create_access_token, hash_password, verify_password
 
@@ -13,7 +14,12 @@ def _by_email(db: DbSession, email: str) -> User | None:
     return db.scalar(select(User).where(func.lower(User.email) == email.lower()))
 
 
-@router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(limit_auth)],
+)
 def register(body: RegisterIn, db: DbSession) -> TokenOut:
     if _by_email(db, body.email):
         raise HTTPException(status.HTTP_409_CONFLICT, "Já existe uma conta com esse e-mail.")
@@ -25,7 +31,7 @@ def register(body: RegisterIn, db: DbSession) -> TokenOut:
     return TokenOut(access_token=create_access_token(user.id), user=UserOut.model_validate(user))
 
 
-@router.post("/login", response_model=TokenOut)
+@router.post("/login", response_model=TokenOut, dependencies=[Depends(limit_auth)])
 def login(body: LoginIn, db: DbSession) -> TokenOut:
     user = _by_email(db, body.email)
     if not verify_password(body.password, user.password_hash if user else None) or user is None:

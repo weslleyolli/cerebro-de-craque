@@ -4,6 +4,14 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// No Netlify o app e a API ficam em endereços diferentes: sem VITE_API_URL o app
+// publicado não acharia a API. Melhor o build falhar com uma mensagem clara.
+if (process.env.NETLIFY === 'true' && !process.env.VITE_API_URL) {
+  throw new Error(
+    'Defina VITE_API_URL no Netlify (Site configuration > Environment variables) com o endereço da API no Render, ex.: https://cerebro-de-craque-api.onrender.com',
+  )
+}
+
 export default defineConfig({
   plugins: [
     react(),
