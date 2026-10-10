@@ -1,3 +1,5 @@
+import { Component, Suspense, lazy } from 'react'
+import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 
 import { useScenarios, useStats, useUpdatePlayer } from '../api/queries'
@@ -6,6 +8,32 @@ import { useActivePlayer, usePlayer } from '../auth/PlayerProvider'
 import { ArrowHeadDefs, CourtMarkings } from '../game/Court'
 import { ErrorNote, Loading, MedalCard } from '../components/ui'
 import { CATEGORIES, CATEGORY_ORDER } from '../lib/catalog'
+
+// O craque em 3D só é baixado quando aparece; sem WebGL, fica o desenho da prancheta.
+const CraqueShowcase = lazy(() => import('../game/CraqueShowcase'))
+
+class ShowcaseGuard extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children
+  }
+}
+
+function Showcase({ name, fallback }: { name: string; fallback: ReactNode }) {
+  const still = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  return (
+    <ShowcaseGuard fallback={fallback}>
+      <Suspense fallback={<div className="h-full w-full animate-pulse rounded-2xl bg-court-out" />}>
+        <CraqueShowcase name={name} still={still} />
+      </Suspense>
+    </ShowcaseGuard>
+  )
+}
 
 function HeroBoard() {
   const dot = (x: number, y: number, fill: string, tag?: string, ink = 'fill-us-ink') => (
@@ -147,8 +175,8 @@ export function HomePage() {
             </button>
           </div>
         </div>
-        <div className="hidden w-full max-w-xs justify-self-center rounded-2xl bg-court-out p-2.5 lg:block">
-          <HeroBoard />
+        <div className="order-first h-72 w-full justify-self-center sm:h-80 lg:order-none lg:h-[26rem] lg:max-w-sm">
+          <Showcase name={player.name} fallback={<div className="rounded-2xl bg-court-out p-2.5"><HeroBoard /></div>} />
         </div>
       </section>
 

@@ -31,6 +31,8 @@ import {
   yawTo,
 } from './scan'
 import type { Blocker } from './scan'
+import { HERO_KIT, rivalKit, teamKit } from './three/anime'
+import type { Kit } from './three/anime'
 import { Ball, CourtModel, FLAT, Figure, LABEL_HEIGHT, usePalette } from './three/scene'
 import type { Palette } from './three/scene'
 import { awareTarget, optionAnchor } from './vision'
@@ -197,6 +199,11 @@ function Spot({ at, r, color, opacity }: { at: Point; r: number; color: string; 
 
 const RED = '#ff3b3b'
 const GREEN = '#3ddc84'
+
+/** Números nas costas (o 10 é da criança). */
+const NUMBERS: Record<string, string> = { a1: '9', a2: '7', f: '4', o1: '5', o2: '8', o3: '11', o4: '3' }
+/** O fantasma veste azul-claro: mostra o que devia ter sido feito. */
+const GHOST_KIT: Kit = { ...HERO_KIT, shirt: '#7fe7ff', socks: '#7fe7ff', shortsTrim: '#7fe7ff' }
 
 // ---------- Rótulos e hologramas (HTML por cima do canvas) ----------
 
@@ -499,13 +506,14 @@ export default function ScanView({
   ]
   const nodes = useRef(new Map<string, HTMLElement>())
 
-  const colors = (id: string) => {
+  const colors = (id: string): { kit: Kit; detail: 'hero' | 'crowd' } => {
     const team = teamOf(id)
-    if (id === 'gk') return { shirt: palette.ourKeeper, shorts: '#1f2a30' }
-    if (id === 'o0') return { shirt: palette.theirKeeper, shorts: '#1f2a30' }
-    if (team === 'you') return { shirt: mode === 'ghost' ? '#7fe7ff' : palette.you, shorts: '#22262b' }
-    if (team === 'us') return { shirt: palette.us, shorts: '#22262b' }
-    return { shirt: palette.them, shorts: '#f2f4f5' }
+    const num = NUMBERS[id] ?? '6'
+    if (id === 'gk') return { kit: teamKit(palette.ourKeeper, '1'), detail: 'crowd' }
+    if (id === 'o0') return { kit: rivalKit(palette.theirKeeper, '1'), detail: 'crowd' }
+    if (team === 'you') return { kit: mode === 'ghost' ? GHOST_KIT : HERO_KIT, detail: 'hero' }
+    if (team === 'us') return { kit: teamKit(palette.us, num), detail: 'crowd' }
+    return { kit: rivalKit(palette.them, num), detail: 'crowd' }
   }
 
   return (
@@ -668,7 +676,7 @@ function SceneContents({
   frozen: boolean
   hints: boolean
   you: Point
-  colors: (id: string) => { shirt: string; shorts: string }
+  colors: (id: string) => { kit: Kit; detail: 'hero' | 'crowd' }
   onPick?: (i: number) => void
 }) {
   const pickByTarget = new Map(
@@ -682,8 +690,10 @@ function SceneContents({
     <>
       <color attach="background" args={[palette.wall]} />
       <fog attach="fog" args={[palette.wall, 30, 80]} />
-      <hemisphereLight args={['#ffffff', palette.out, 1.1]} />
-      <directionalLight position={[6, 14, 10]} intensity={1.4} />
+      {/* Luz principal, preenchimento e uma luz de recorte por trás (o brilho na borda do anime). */}
+      <hemisphereLight args={['#ffffff', palette.out, 0.9]} />
+      <directionalLight position={[6, 14, 10]} intensity={1.5} />
+      <directionalLight position={[-8, 9, -14]} intensity={0.9} color="#bfe8ff" />
       <CourtModel palette={palette} />
 
       {Object.entries(positions).map(([id, at]) => {
@@ -709,6 +719,7 @@ function SceneContents({
                     : null
             }
             ghost={team === 'you' && mode === 'ghost'}
+            kicks
             onClick={pick !== undefined && onPick ? () => onPick(pick) : undefined}
           />
         )

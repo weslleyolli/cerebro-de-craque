@@ -4,11 +4,13 @@
  * Eixos: x da quadra → x do 3D; y da quadra → z do 3D; altura é o y do 3D.
  */
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 
 import type { Point } from '../../api/types'
 import { COURT } from '../engine'
+import { AnimeBody, IDLE, applyPose, kickPose, runPose } from './anime'
+import type { Kit, Rig } from './anime'
 
 // ---------- Cores ----------
 
@@ -56,7 +58,7 @@ export function usePalette(): Palette {
 }
 
 export const SKIN = ['#f1c7a5', '#d9a47a', '#b97a52', '#8a5636', '#5e3a24']
-export const HAIR = ['#2b1a10', '#4a2c17', '#151515', '#7a4b22']
+export const HAIR = ['#1d2340', '#2b1a10', '#151515', '#4a2c17', '#3a1e4a']
 
 export function hash(text: string): number {
   let h = 0
@@ -187,20 +189,21 @@ export function CourtModel({ palette }: { palette: Palette }) {
 
 // ---------- Bonecos ----------
 
-const HIP = 0.72
-const SHOULDER = 1.36
 /** Altura dos rótulos (VOCÊ, AD...) acima do chão. */
-export const LABEL_HEIGHT = 2.05
+export const LABEL_HEIGHT = 2.1
 /** Escala do jogador alto (tapa mais a visão). */
 export const TALL_SCALE = 1.18
+
+const KICK_MS = 520
 
 export interface FigureProps {
   /** Semente para variar pele e cabelo. */
   look: string
   at: Point
   ball: Point
-  shirt: string
-  shorts: string
+  kit: Kit
+  /** "hero": a criança, com rosto e detalhes; "crowd": os outros, mais leves. */
+  detail?: 'hero' | 'crowd'
   /** Para onde o boneco olha quando está parado (ângulo da visão); se não vier, olha para a bola. */
   faceYaw?: (() => number) | null
   tall?: boolean
@@ -210,32 +213,35 @@ export interface FigureProps {
   ring?: { color: string; pulse?: boolean } | null
   /** Fantasma: o boneco fica transparente (mostra o que devia ter sido feito). */
   ghost?: boolean
+  /** Chuta quando a bola sai do pé dele (passe, chute). */
+  kicks?: boolean
   onClick?: () => void
 }
 
-/** Boneco simples de jogador: corre para onde se move; parado, olha para a bola e balança. */
-export function Figure({ look, at, ball, shirt, shorts, faceYaw, tall, glow, ring, ghost, onClick }: FigureProps) {
+/** Jogador anime: corre para onde se move; parado, olha para a bola e respira; chuta quando a bola sai do pé. */
+export function Figure({ look, at, ball, kit, detail = 'crowd', faceYaw, tall, glow, ring, ghost, kicks, onClick }: FigureProps) {
   const root = useRef<THREE.Group>(null)
-  const body = useRef<THREE.Group>(null)
-  const legL = useRef<THREE.Group>(null)
-  const legR = useRef<THREE.Group>(null)
-  const armL = useRef<THREE.Group>(null)
-  const armR = useRef<THREE.Group>(null)
+  const rig = useRef<Rig | null>(null)
   const ringRef = useRef<THREE.Mesh>(null)
-  const target = useRef({ at, ball, faceYaw, ringPulse: !!ring?.pulse })
-  target.current = { at, ball, faceYaw, ringPulse: !!ring?.pulse }
-  const motion = useRef({ x: at[0], z: at[1], speed: 0, heading: Math.PI, phase: hash(look) % 7 })
+  const target = useRef({ at, ball, faceYaw, ringPulse: !!ring?.pulse, kicks: !!kicks })
+  target.current = { at, ball, faceYaw, ringPulse: !!ring?.pulse, kicks: !!kicks }
+  const motion = useRef({
+    x: at[0],
+    z: at[1],
+    speed: 0,
+    heading: Math.PI,
+    phase: hash(look) % 7,
+    ballDist: Infinity,
+    kickAt: -Infinity,
+  })
   const skin = SKIN[hash(look) % SKIN.length]!
   const hair = HAIR[hash(look + 'h') % HAIR.length]!
-  const material = useMemo(
-    () => (ghost ? { transparent: true, opacity: 0.38, depthWrite: false } : {}),
-    [ghost],
-  )
 
   useFrame((state, dt) => {
     const m = motion.current
-    const { at: p, ball: b, faceYaw: fy, ringPulse } = target.current
+    const { at: p, ball: b, faceYaw: fy, ringPulse, kicks: canKick } = target.current
     const step = Math.min(dt, 0.1)
+    const now = state.clock.elapsedTime * 1000
     const dx = p[0] - m.x
     const dz = p[1] - m.z
     const moved = Math.hypot(dx, dz)
@@ -244,53 +250,36 @@ export function Figure({ look, at, ball, shirt, shorts, faceYaw, tall, glow, rin
     m.x = p[0]
     m.z = p[1]
 
+    // Bola saindo rápido do pé: chute.
+    const bd = Math.hypot(b[0] - p[0], b[1] - p[1])
+    if (canKick && m.ballDist < 1.1 && bd - m.ballDist > 0.06 && now - m.kickAt > KICK_MS) m.kickAt = now
+    m.ballDist = bd
+
     let want = m.heading
     if (m.speed > 0.6 && moved > 1e-4) want = Math.atan2(dx, dz)
     else if (fy) {
       // Ângulo da visão (0 = gol adversário) para a rotação do boneco (frente em +z).
       want = Math.PI - fy()
-    } else {
-      const bx = b[0] - p[0]
-      const bz = b[1] - p[1]
-      if (Math.hypot(bx, bz) > 0.5) want = Math.atan2(bx, bz)
-    }
+    } else if (bd > 0.5) want = Math.atan2(b[0] - p[0], b[1] - p[1])
     const diff = Math.atan2(Math.sin(want - m.heading), Math.cos(want - m.heading))
     m.heading += diff * Math.min(1, step * 9)
 
     const run = Math.min(1, m.speed / 4.5)
     m.phase += step * (4 + m.speed * 2.2)
-    const swing = Math.sin(m.phase) * 0.75 * run
-    const t = state.clock.elapsedTime
-    // Parado, o corpo "respira": um balanço leve de um pé para o outro.
-    const idle = (1 - run) * Math.sin(t * 2.1 + m.phase) * 0.05
+    let pose = run > 0.05 ? runPose(m.phase, run) : IDLE
+    if (run <= 0.05) {
+      // Parado, o corpo "respira".
+      const t = state.clock.elapsedTime
+      pose = { ...pose, torso: [pose.torso[0] + Math.sin(t * 2.1 + m.phase) * 0.03, 0], lift: Math.sin(t * 2.1) * 0.006 }
+    }
+    const k = (now - m.kickAt) / KICK_MS
+    if (k >= 0 && k < 1) pose = kickPose(k, pose)
+    if (rig.current) applyPose(rig.current, pose)
+
     root.current?.position.set(p[0], 0, p[1])
     if (root.current) root.current.rotation.y = m.heading
-    if (body.current) {
-      body.current.position.y = Math.abs(Math.sin(m.phase)) * 0.06 * run
-      body.current.rotation.z = idle
-    }
-    if (legL.current) legL.current.rotation.x = swing
-    if (legR.current) legR.current.rotation.x = -swing
-    if (armL.current) armL.current.rotation.x = -swing * 0.8
-    if (armR.current) armR.current.rotation.x = swing * 0.8
-    ringRef.current?.scale.setScalar(ringPulse ? 1 + 0.15 * Math.sin(t * 5) : 1)
+    ringRef.current?.scale.setScalar(ringPulse ? 1 + 0.15 * Math.sin(state.clock.elapsedTime * 5) : 1)
   })
-
-  const limb = (r: number, len: number, color: string) => (
-    <mesh position={[0, -(len / 2 + r), 0]}>
-      <capsuleGeometry args={[r, len, 4, 8]} />
-      <meshStandardMaterial color={color} roughness={0.6} {...material} />
-    </mesh>
-  )
-  const shirtMat = (
-    <meshStandardMaterial
-      color={shirt}
-      roughness={0.6}
-      emissive={glow ?? '#000000'}
-      emissiveIntensity={glow ? 0.55 : 0}
-      {...material}
-    />
-  )
 
   return (
     <group
@@ -319,35 +308,8 @@ export function Figure({ look, at, ball, shirt, shorts, faceYaw, tall, glow, rin
           <meshBasicMaterial color={ring.color} transparent opacity={0.9} />
         </mesh>
       )}
-      <group ref={body} scale={tall ? TALL_SCALE : 1}>
-        <group ref={legL} position={[-0.11, HIP, 0]}>
-          {limb(0.085, 0.5, skin)}
-        </group>
-        <group ref={legR} position={[0.11, HIP, 0]}>
-          {limb(0.085, 0.5, skin)}
-        </group>
-        <mesh position={[0, HIP + 0.02, 0]}>
-          <cylinderGeometry args={[0.21, 0.2, 0.24, 14]} />
-          <meshStandardMaterial color={shorts} {...material} />
-        </mesh>
-        <mesh position={[0, HIP + 0.36, 0]}>
-          <capsuleGeometry args={[0.2, 0.3, 4, 12]} />
-          {shirtMat}
-        </mesh>
-        <group ref={armL} position={[-0.27, SHOULDER, 0]}>
-          {limb(0.065, 0.38, shirt)}
-        </group>
-        <group ref={armR} position={[0.27, SHOULDER, 0]}>
-          {limb(0.065, 0.38, shirt)}
-        </group>
-        <mesh position={[0, 1.6, 0]}>
-          <sphereGeometry args={[0.16, 16, 12]} />
-          <meshStandardMaterial color={skin} {...material} />
-        </mesh>
-        <mesh position={[0, 1.62, 0]}>
-          <sphereGeometry args={[0.168, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial color={hair} {...material} />
-        </mesh>
+      <group scale={tall ? TALL_SCALE : 1}>
+        <AnimeBody kit={kit} skin={skin} hair={hair} detail={detail} ghost={ghost} glow={glow} rigRef={rig} />
       </group>
     </group>
   )
