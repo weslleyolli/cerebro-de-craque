@@ -367,7 +367,11 @@ function Session({
             {snapshot && (
               <>
                 {use3d && (
-                  <div className={`aspect-[4/5] max-h-[68vh] w-full overflow-hidden rounded-xl ${show2d ? 'hidden' : ''}`}>
+                  // Sempre 4:5, centralizada: a tela mostra a mesma abertura que conta como
+                  // visto (VISION_HFOV). Com o celular deitado, sobra espaço dos lados.
+                  <div
+                    className={`mx-auto aspect-[4/5] w-full max-w-[calc(68vh*4/5)] overflow-hidden rounded-xl ${show2d ? 'hidden' : ''}`}
+                  >
                     <PlayerView
                       scenario={sc}
                       snapshot={snapshot}

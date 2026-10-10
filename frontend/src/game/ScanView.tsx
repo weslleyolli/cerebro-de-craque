@@ -222,7 +222,6 @@ interface Label {
   text: string
   index?: number
   title?: string
-  found?: boolean
 }
 
 function LabelProjector({ labels, nodes }: { labels: MutableRefObject<Label[]>; nodes: MutableRefObject<Map<string, HTMLElement>> }) {
@@ -515,7 +514,8 @@ export default function ScanView({
     ...(showOptions
       ? scenario.options.flatMap((o, i): Label[] => {
           const a = anchors[i]
-          if (!a) return []
+          // Só aparece (e só dá para tocar) o holograma que já entrou na visão: igual ao painel.
+          if (!a || !found.has(i)) return []
           // Proteger (sem alvo): o holograma fica ao lado da criança, na altura do peito.
           const side: Point = [Math.cos(yaw.current) * 1.1, Math.sin(yaw.current) * 1.1]
           const h = o.target ? LABEL_HEIGHT + 0.55 : o.hint ? 0.9 : 1.2
@@ -528,7 +528,6 @@ export default function ScanView({
               text: LETTERS[i]!,
               index: i,
               title: o.short ?? o.label,
-              found: found.has(i),
             },
           ]
         })
@@ -574,6 +573,7 @@ export default function ScanView({
           you={you}
           colors={colors}
           youYaw={youYaw}
+          found={found}
           onPick={onPick && showOptions ? (i) => !wasDrag() && onPick(i) : undefined}
         />
         <Rig
@@ -692,10 +692,13 @@ function SceneContents({
   hints,
   you,
   colors,
+  found,
   onPick,
   youYaw,
 }: {
   youYaw: () => number
+  /** Opções que já entraram na visão: só o companheiro delas fica destacado e clicável. */
+  found: Set<number>
   palette: Palette
   scenario: Scenario
   positions: Record<string, Point>
@@ -728,7 +731,8 @@ function SceneContents({
 
       {Object.entries(positions).map(([id, at]) => {
         const team = teamOf(id)
-        const pick = frozen && onPick ? pickByTarget.get(id) : undefined
+        const opt = frozen && onPick ? pickByTarget.get(id) : undefined
+        const pick = opt !== undefined && found.has(opt) ? opt : undefined
         return (
           <Figure
             key={id}
