@@ -3,7 +3,7 @@
     "id": "ala-primeira",
     "category": "ataque",
     "concept": "Tocar de primeira",
-    "title": "Marcador chegando nas costas",
+    "title": "Marcador chegando por dentro",
     "view": {
       "top": -1.6,
       "bottom": 31
@@ -15,7 +15,7 @@
       "f": "F"
     },
     "setup": "Você é o ala esquerdo. O time troca passes atrás e a bola vai vir para você. Antes dela chegar, olhe em volta: o que está acontecendo nas suas costas?",
-    "ask": "A bola está chegando e o seu marcador vem por trás. O que você faz?",
+    "ask": "A bola está chegando e o seu marcador vem por dentro. O que você faz?",
     "lesson": "Antes de a bola chegar, vire a cabeça e olhe para trás. Quem já sabe onde está o companheiro livre pode tocar de primeira, antes de o marcador chegar.",
     "start": {
       "positions": {
@@ -154,8 +154,8 @@
           ]
         },
         "ball": [
-          3.9,
-          21.6
+          3.2,
+          21.4
         ],
         "slow": 0.3
       }
@@ -179,7 +179,7 @@
         "grade": "best",
         "result": "GOL!",
         "kind": "gol",
-        "why": "Boa! Você olhou em volta antes de a bola chegar e achou o pivô sozinho: o zagueiro dele ficou olhando a bola. De primeira, o seu marcador nem chegou perto.",
+        "why": "Boa! O pivô estava sozinho: o zagueiro dele ficou olhando a bola. De primeira, a bola chegou nele antes de o seu marcador chegar perto.",
         "frames": [
           {
             "ms": 550,
@@ -225,7 +225,7 @@
         "grade": "bad",
         "result": "Bola roubada",
         "kind": "perde",
-        "why": "O seu marcador vinha forte por dentro, nas suas costas. Girando para dentro, você foi direto nele.",
+        "why": "O seu marcador vinha forte por dentro. Girando para dentro, você foi direto nele.",
         "frames": [
           {
             "ms": 450,
@@ -308,7 +308,9 @@
       }
     ],
     "sort_order": 1,
-    "face": {},
+    "face": {
+      "v": "down"
+    },
     "tall": []
   },
   {
@@ -413,8 +415,8 @@
             16.5
           ],
           "o1": [
-            9.5,
-            9
+            10.3,
+            9.3
           ]
         },
         "ball": "f"
@@ -440,13 +442,13 @@
         "ms": 500,
         "moves": {
           "o3": [
-            16.6,
-            19.7
+            16.1,
+            19.8
           ]
         },
         "ball": [
-          16.3,
-          22.5
+          16.6,
+          22
         ],
         "slow": 0.3
       }
@@ -460,7 +462,7 @@
     },
     "aware": {
       "see": [
-        18.2,
+        18.8,
         13
       ],
       "label": "o espaço vazio nas costas do marcador"
@@ -473,7 +475,7 @@
         "grade": "best",
         "result": "GOL!",
         "kind": "gol",
-        "why": "Isso! O marcador veio no bote e deixou um espaço enorme nas costas dele. Você viu que não tinha ninguém na cobertura e arrancou pela ala.",
+        "why": "Isso! O marcador veio no bote e deixou um espaço enorme nas costas dele, sem ninguém na cobertura. Girando, você arrancou pela ala.",
         "frames": [
           {
             "ms": 450,
@@ -527,8 +529,8 @@
                 8
               ],
               "o0": [
-                11.3,
-                1.6
+                11.8,
+                1.5
               ]
             }
           },
@@ -541,7 +543,7 @@
           }
         ],
         "hint": [
-          18.2,
+          18.8,
           13
         ]
       },
@@ -638,7 +640,7 @@
       "a1": "P",
       "f": "F"
     },
-    "setup": "Você é o ala esquerdo, perto da lateral. A bola vem para você. Gire a cabeça: quem está chegando e quem está livre? Se alguém tapar a visão, dê um passo para o lado.",
+    "setup": "Você é o ala esquerdo, perto da lateral. A bola vem para você. Gire a cabeça: quem está chegando e quem está livre?",
     "ask": "Dois marcadores chegando e o pivô lá na frente. O que você faz?",
     "lesson": "Quando não há passe livre e o marcador chega forte, proteja a bola com o corpo, de costas para ele, e espere o apoio. Perder a bola ali é contra-ataque deles.",
     "start": {
@@ -738,8 +740,8 @@
           ]
         },
         "ball": [
-          2.9,
-          23.9
+          2.3,
+          23.6
         ],
         "slow": 0.3
       }
@@ -751,9 +753,7 @@
     "ai": {
       "o4": "cercar"
     },
-    "tall": [
-      "o1"
-    ],
+    "tall": [],
     "aware": {
       "see": "o2",
       "label": "o marcador chegando para roubar"
@@ -766,7 +766,7 @@
         "grade": "best",
         "result": "Posse mantida",
         "kind": "posse",
-        "why": "Isso. Olhando em volta, você viu que não tinha passe livre e que dois vinham fechar. Protegendo com o corpo, você segurou até o fixo chegar para o apoio.",
+        "why": "Isso. Não tinha passe livre e dois vinham fechar. Protegendo com o corpo, você segurou a bola até o fixo chegar para o apoio.",
         "frames": [
           {
             "ms": 450,
@@ -841,8 +841,8 @@
                 22
               ],
               "o3": [
-                3.9,
-                22.1
+                4.2,
+                22.2
               ]
             }
           },
@@ -854,8 +854,8 @@
             "ms": 700,
             "moves": {
               "o3": [
-                6,
-                30
+                6.6,
+                29.6
               ],
               "v": [
                 3.4,
@@ -876,7 +876,7 @@
         "grade": "bad",
         "result": "Passe interceptado",
         "kind": "perde",
-        "why": "O fixo deles estava na frente do pivô, na linha do passe. Dando um passo para o lado, dava para ver que ele estava tapado.",
+        "why": "O fixo deles estava na frente do pivô, na linha do passe, e cortou a bola.",
         "frames": [
           {
             "ms": 550,
@@ -902,7 +902,9 @@
       }
     ],
     "sort_order": 3,
-    "face": {}
+    "face": {
+      "v": "down"
+    }
   },
   {
     "id": "ala-infiltracao",
@@ -968,8 +970,8 @@
             22.5
           ],
           "a1": [
-            10.8,
-            24.6
+            11.8,
+            24.9
           ],
           "o2": [
             5,
@@ -1043,7 +1045,7 @@
         "grade": "best",
         "result": "Bola recuperada",
         "kind": "recupera",
-        "why": "Boa! Você olhou para trás, viu o ala deles infiltrando e chegou antes. O passe morreu em você.",
+        "why": "Boa! O ala deles infiltrava nas suas costas e você chegou antes dele. O passe morreu em você.",
         "frames": [
           {
             "ms": 700,
@@ -1084,7 +1086,7 @@
         "grade": "bad",
         "result": "Gol deles",
         "kind": "golcontra",
-        "why": "Você saiu na bola e não viu quem passava nas suas costas. O ala deles recebeu sozinho na frente do gol.",
+        "why": "Você saiu na bola e deixou sozinho quem passava nas suas costas. O ala deles recebeu livre na frente do gol.",
         "frames": [
           {
             "ms": 600,
@@ -1306,8 +1308,8 @@
             24
           ],
           "a1": [
-            10.8,
-            25.2
+            10.7,
+            25.45
           ]
         },
         "slow": 0.3
@@ -1325,7 +1327,7 @@
         "grade": "best",
         "result": "Bola recuperada",
         "kind": "recupera",
-        "why": "Você virou a cabeça, achou o ala deles aberto e se colocou no caminho do passe. Defender também é ler para onde a bola vai.",
+        "why": "O ala deles estava aberto atrás de você, e você se colocou no caminho do passe. Defender também é ler para onde a bola vai.",
         "frames": [
           {
             "ms": 600,
@@ -1463,7 +1465,9 @@
     ],
     "sort_order": 5,
     "face": {},
-    "threats": [],
+    "threats": [
+      "o2"
+    ],
     "ai": {},
     "tall": []
   },
@@ -1484,7 +1488,7 @@
     },
     "setup": "Você é o ala esquerdo, defendendo. O ala deles vem com a bola para cima de você. Fique de olho no que acontece nas suas costas.",
     "ask": "O ala deles vai tocar. O que você faz?",
-    "lesson": "Quando um adversário passa por trás de você na ala, chama ultrapassagem. Quem olha em volta vê a corrida a tempo e recua de lado, mantendo os dois na frente.",
+    "lesson": "Quando um adversário passa por trás de você na ala, chama ultrapassagem. Quem olha em volta vê a corrida a tempo e recua de lado para fechar a passagem por trás.",
     "start": {
       "positions": {
         "o2": [
@@ -1496,8 +1500,8 @@
           28.5
         ],
         "o4": [
-          8,
-          22
+          9,
+          22.5
         ],
         "a1": [
           8,
@@ -1591,7 +1595,7 @@
         "grade": "best",
         "result": "Bola recuperada",
         "kind": "recupera",
-        "why": "Você olhou para trás, viu o fixo deles passando nas suas costas e fechou a passagem. O passe morreu em você.",
+        "why": "O fixo deles passava nas suas costas, e você recuou de lado a tempo de fechar a passagem. O passe morreu em você.",
         "frames": [
           {
             "ms": 600,
@@ -1632,14 +1636,23 @@
         "grade": "bad",
         "result": "Gol deles",
         "kind": "golcontra",
-        "why": "No bote, o fixo deles passou nas suas costas e recebeu livre. Você não tinha visto a ultrapassagem.",
+        "why": "No bote, o fixo deles passou nas suas costas e recebeu livre: era uma ultrapassagem.",
         "frames": [
           {
-            "ms": 400,
+            "ms": 200,
             "moves": {
               "v": [
-                3.5,
-                26.6
+                4.2,
+                28.5
+              ]
+            }
+          },
+          {
+            "ms": 250,
+            "moves": {
+              "v": [
+                4.3,
+                27.7
               ]
             }
           },
@@ -1686,14 +1699,14 @@
         "grade": "ok",
         "result": "Defesa do goleiro",
         "kind": "neutro",
-        "why": "Você viu a ultrapassagem, mas largou quem tinha a bola, e ele cortou para dentro livre. Recuando de lado, dava para fechar os dois.",
+        "why": "Correndo atrás do fixo, você largou quem tinha a bola, e ele cortou para dentro livre. Recuando de lado, dava para fechar a passagem sem largar o ala.",
         "frames": [
           {
             "ms": 600,
             "moves": {
               "v": [
-                2.8,
-                32
+                3,
+                31.4
               ],
               "o4": [
                 2.6,
@@ -1735,8 +1748,8 @@
           }
         ],
         "hint": [
-          2.8,
-          32
+          3,
+          31.4
         ]
       }
     ],
@@ -1790,8 +1803,8 @@
           27
         ],
         "o3": [
-          13,
-          22.5
+          12.5,
+          23.88
         ],
         "o4": [
           9.5,
@@ -1817,8 +1830,8 @@
             18
           ],
           "o3": [
-            13.2,
-            21.8
+            12.2,
+            23.62
           ]
         }
       },
@@ -1830,8 +1843,8 @@
             25.1
           ],
           "o3": [
-            13.3,
-            21.4
+            12.83,
+            23.08
           ],
           "a1": [
             14.4,
@@ -1839,25 +1852,29 @@
           ]
         },
         "ball": [
-          12.1,
-          24.3
+          11.3,
+          24.5
         ]
       },
       {
         "ms": 500,
         "moves": {
           "a1": [
-            14.6,
-            16
+            16.2,
+            15.5
           ],
           "o4": [
             10,
             13
+          ],
+          "o3": [
+            11.2,
+            22.4
           ]
         },
         "ball": [
-          12.3,
-          24.65
+          11.75,
+          24.8
         ],
         "slow": 0.3
       }
@@ -1877,17 +1894,17 @@
         "grade": "best",
         "result": "GOL!",
         "kind": "gol",
-        "why": "É isso! Você deu um passo, viu o pivô atrás do pivô deles e mandou de primeira. O time deles estava todo para frente.",
+        "why": "É isso! O nosso pivô saiu em velocidade, escondido atrás do pivô deles, e o passe de primeira pegou o time deles todo para frente.",
         "frames": [
           {
             "ms": 700,
             "moves": {
               "a1": [
-                14.8,
+                17,
                 11
               ],
               "o4": [
-                11.6,
+                13.5,
                 11.5
               ]
             },
@@ -1897,16 +1914,16 @@
             "ms": 800,
             "moves": {
               "a1": [
-                12,
-                5.5
+                14,
+                6
               ],
               "o4": [
-                12.6,
-                7.5
+                13.2,
+                7.6
               ],
               "o0": [
-                10.6,
-                1.8
+                12,
+                1.5
               ]
             }
           },
@@ -1945,16 +1962,16 @@
                 23.2
               ],
               "o3": [
-                12.5,
-                22.5
+                12.3,
+                22.4
               ],
               "o4": [
-                10,
-                15
+                14.8,
+                14.8
               ],
               "a1": [
-                14,
-                17
+                15.8,
+                15.8
               ]
             }
           }
@@ -1977,29 +1994,29 @@
             "ms": 500,
             "moves": {
               "v": [
-                11.2,
-                23.5
+                11,
+                23.9
               ],
               "o1": [
-                10.6,
-                22.9
+                9.9,
+                23.3
               ]
             }
           },
           {
             "ms": 350,
-            "ball": "o1"
+            "ball": "o3"
           },
           {
             "ms": 700,
             "moves": {
-              "o1": [
-                9,
-                30
+              "o3": [
+                13,
+                29
               ],
               "v": [
-                11.5,
-                24
+                10.6,
+                24.3
               ]
             }
           }
@@ -2019,7 +2036,7 @@
     "id": "ala-saida",
     "category": "transicao",
     "concept": "Saída sob pressão",
-    "title": "Dois chegando pelas costas",
+    "title": "Dois chegando para pressionar",
     "view": {
       "top": 13,
       "bottom": 41.6
@@ -2052,8 +2069,8 @@
           27
         ],
         "f": [
-          11,
-          33.5
+          10.5,
+          30.8
         ],
         "a2": [
           16,
@@ -2087,8 +2104,8 @@
             27.5
           ],
           "f": [
-            11.5,
-            33
+            10.5,
+            30.5
           ]
         }
       },
@@ -2126,8 +2143,8 @@
           ]
         },
         "ball": [
-          4,
-          33.8
+          3.6,
+          33.5
         ],
         "slow": 0.3
       }
@@ -2206,8 +2223,8 @@
                 31.6
               ],
               "o1": [
-                4.1,
-                31.4
+                4.2,
+                31
               ]
             }
           },
@@ -2223,8 +2240,8 @@
                 35
               ],
               "gk": [
-                9.2,
-                38.2
+                9.6,
+                38.1
               ]
             }
           },
@@ -2252,21 +2269,27 @@
         "frames": [
           {
             "ms": 900,
+            "moves": {
+              "o4": [
+                13,
+                21.5
+              ]
+            },
             "ball": "o4"
           },
           {
             "ms": 500,
             "moves": {
               "o4": [
-                9,
-                19.5
+                12.6,
+                23
               ]
             }
           }
         ],
         "hint": [
-          9,
-          18
+          13,
+          21
         ]
       }
     ],
@@ -2323,12 +2346,12 @@
           33
         ],
         "a1": [
-          8,
+          7.4,
           31
         ],
         "o4": [
-          9,
-          34
+          8.6,
+          34.2
         ]
       },
       "ball": "gk"
@@ -2450,8 +2473,8 @@
                 7
               ],
               "o0": [
-                11,
-                2
+                11.35,
+                1.8
               ],
               "o1": [
                 9.5,

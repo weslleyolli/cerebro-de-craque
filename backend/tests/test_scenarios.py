@@ -1,4 +1,6 @@
 import json
+import math
+import re
 
 import pytest
 
@@ -108,3 +110,31 @@ def test_seed_deactivates_plays_removed_from_the_file(client):
     finally:
         with engine.begin() as conn:
             conn.execute(text("DELETE FROM scenarios WHERE id = 'jogada-antiga'"))
+
+
+def test_why_describes_the_play_not_the_kids_eyes():
+    """O "porquê" aparece mesmo quando o tempo acaba ou no fantasma: não pode afirmar que a
+    criança olhou ou viu. Isso é o relatório medido que diz, logo abaixo."""
+    claims = re.compile(
+        r"\bvocê (olhou|viu|não viu|tinha visto|não tinha visto|achou|deu um passo"
+        r"|virou a cabeça)\b|olhando em volta",
+        re.IGNORECASE,
+    )
+    for s in load_scenarios():
+        for o in s.options:
+            assert not claims.search(o.why), f"{s.id} / {o.short}: {o.why}"
+
+
+def test_first_touch_starts_at_the_kids_foot():
+    """Bola solta chegando na criança: na pausa, ela já está no pé (não vira sozinha longe)."""
+    for s in load_scenarios():
+        positions = {**s.start.positions}
+        ball = s.start.ball
+        for f in s.intro:
+            positions.update(f.moves)
+            ball = f.ball if f.ball is not None else ball
+        if isinstance(ball, str):
+            continue
+        nearest = min(positions, key=lambda i: math.dist(positions[i], ball))
+        if nearest == "v":
+            assert math.dist(positions["v"], ball) <= 0.9, s.id
