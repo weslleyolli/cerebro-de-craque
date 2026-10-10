@@ -54,7 +54,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 1200,
   },
   server: {
-    proxy: { '/api': 'http://localhost:8000' },
+    // API_PROXY troca o endereço da API local (ex.: duas APIs em portas diferentes).
+    proxy: { '/api': process.env.API_PROXY ?? 'http://localhost:8000' },
   },
   test: {
     environment: 'node',
