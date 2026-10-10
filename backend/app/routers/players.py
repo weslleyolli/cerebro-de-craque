@@ -91,7 +91,9 @@ def _history(db: DbSession, player_id: int) -> tuple[list[AttemptRow], list[Scen
 )
 def record_attempt(body: AttemptIn, player: OwnedPlayer, db: DbSession) -> AttemptOut:
     scenario = db.get(Scenario, body.scenario_id)
-    if scenario is None or not scenario.active:
+    # Jogada que saiu do app (active = false) ainda vale: depois de um deploy, o
+    # aparelho pode estar com a lista antiga. Só id que nunca existiu é recusado.
+    if scenario is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Jogada não encontrada.")
 
     # A nota vem do banco de jogadas, nunca do aparelho.
