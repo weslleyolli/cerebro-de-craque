@@ -40,10 +40,12 @@ export default defineConfig({
         runtimeCaching: [
           {
             // Jogadas sempre da rede; a cópia salva só entra sem conexão, para o
-            // app não mostrar uma nota diferente da que o servidor grava.
+            // app não mostrar uma nota diferente da que o servidor grava. Sem tempo
+            // limite: a API do Render leva até um minuto para acordar, e esperar
+            // menos que isso serviria a lista de antes do último deploy.
             urlPattern: ({ url }) => url.pathname.startsWith('/api/scenarios'),
             handler: 'NetworkFirst',
-            options: { cacheName: 'jogadas', networkTimeoutSeconds: 4 },
+            options: { cacheName: 'jogadas' },
           },
         ],
       },

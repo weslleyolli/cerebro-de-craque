@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { api } from './client'
-import type { AttemptResult, Player, PlayerSettings, Scenario, Stats } from './types'
+import { api, ApiError } from './client'
+import { normalizeScenario, type ScenarioPayload } from './normalize'
+import type { AttemptResult, Player, PlayerSettings, Stats } from './types'
 
 export const keys = {
   scenarios: ['scenarios'] as const,
@@ -12,7 +13,7 @@ export const keys = {
 export function useScenarios() {
   return useQuery({
     queryKey: keys.scenarios,
-    queryFn: () => api<Scenario[]>('/api/scenarios'),
+    queryFn: async () => (await api<ScenarioPayload[]>('/api/scenarios')).map(normalizeScenario),
     staleTime: 60 * 60 * 1000,
   })
 }
@@ -86,6 +87,10 @@ export function useRecordAttempt(playerId: number) {
     // Sem internet, falha na hora (e o treino avisa) em vez de ficar pausada sem ninguém saber.
     networkMode: 'always',
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.stats(playerId) }),
+    // Jogada que a API não conhece: a lista de lances deste aparelho é velha.
+    onError: (e) => {
+      if (e instanceof ApiError && e.status === 404) qc.invalidateQueries({ queryKey: keys.scenarios })
+    },
   })
 }
 

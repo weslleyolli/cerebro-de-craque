@@ -190,3 +190,53 @@ def test_scanning_is_stored_and_summarized(client, auth, player_id):
     assert ataque["avg_scans"] == 2.0
     assert s["recent"][0]["scans"] == 0
     assert s["recent"][1]["scans"] is None
+
+
+def test_attempt_on_a_deactivated_play_is_still_recorded(client, auth, player_id):
+    """Depois de um deploy, o aparelho pode ainda ter a lista antiga de lances.
+
+    A jogada que saiu do app continua no banco: a decisão vale, com a nota do banco.
+    Só um id que nunca existiu é recusado.
+    """
+    from sqlalchemy import text
+
+    from app.db import engine
+
+    best = best_index(client, "ala-saida")
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE scenarios SET active = false WHERE id = 'ala-saida'"))
+    try:
+        a = post(client, auth, player_id, "ala-saida", best)
+        assert a["grade"] == "best" and a["points"] == 3
+        r = client.post(
+            f"/api/players/{player_id}/attempts",
+            json={"scenario_id": "nao-existe", "option_index": 0, "decision_ms": 1000},
+            headers=auth,
+        )
+        assert r.status_code == 404
+    finally:
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE scenarios SET active = true WHERE id = 'ala-saida'"))
+
+
+def test_recent_keeps_title_and_choice_of_a_deactivated_play(client, auth, player_id):
+    """Os pais veem o nome do lance e a escolha mesmo depois que a jogada sai do app."""
+    from sqlalchemy import text
+
+    from app.db import engine
+
+    play = client.get("/api/scenarios/ala-saida").json()
+    post(client, auth, player_id, "ala-saida", 1)
+    post(client, auth, player_id, "ala-saida", None, ms=8000)  # tempo esgotado
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE scenarios SET active = false WHERE id = 'ala-saida'"))
+    try:
+        s = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
+        late, chosen = s["recent"]
+        assert chosen["scenario_title"] == play["title"]
+        assert chosen["option_label"] == play["options"][1]["label"]
+        assert late["scenario_title"] == play["title"]
+        assert late["option_label"] is None
+    finally:
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE scenarios SET active = true WHERE id = 'ala-saida'"))

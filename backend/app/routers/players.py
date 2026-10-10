@@ -57,8 +57,11 @@ def delete_player(player: OwnedPlayer, db: DbSession) -> Response:
 
 
 def _history(db: DbSession, player_id: int) -> tuple[list[AttemptRow], list[ScenarioRow]]:
+    # Nome do lance e texto da escolha vêm da jogada no banco, mesmo inativa,
+    # para o histórico continuar legível depois que ela sai do app.
+    label = Scenario.options[Attempt.option_index]["label"].astext
     rows = db.execute(
-        select(Attempt, Scenario.category)
+        select(Attempt, Scenario.category, Scenario.title, label)
         .join(Scenario, Scenario.id == Attempt.scenario_id)
         .where(Attempt.player_id == player_id)
         .order_by(Attempt.created_at, Attempt.id)
@@ -74,8 +77,10 @@ def _history(db: DbSession, player_id: int) -> tuple[list[AttemptRow], list[Scen
             created_at=a.created_at,
             scans=a.scans,
             aware=a.aware,
+            title=title,
+            option_label=option_label,
         )
-        for a, cat in rows
+        for a, cat, title, option_label in rows
     ]
     scenarios = [
         ScenarioRow(id=s.id, category=s.category)
@@ -91,7 +96,9 @@ def _history(db: DbSession, player_id: int) -> tuple[list[AttemptRow], list[Scen
 )
 def record_attempt(body: AttemptIn, player: OwnedPlayer, db: DbSession) -> AttemptOut:
     scenario = db.get(Scenario, body.scenario_id)
-    if scenario is None or not scenario.active:
+    # Jogada que saiu do app (active = false) ainda vale: depois de um deploy, o
+    # aparelho pode estar com a lista antiga. Só id que nunca existiu é recusado.
+    if scenario is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Jogada não encontrada.")
 
     # A nota vem do banco de jogadas, nunca do aparelho.
