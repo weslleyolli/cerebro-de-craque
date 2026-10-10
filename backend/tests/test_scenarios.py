@@ -16,9 +16,9 @@ def test_list_is_public_and_ordered(client):
 
 
 def test_get_one(client):
-    r = client.get("/api/scenarios/cobertura")
+    r = client.get("/api/scenarios/ala-linha")
     assert r.status_code == 200
-    assert r.json()["concept"] == "Cobertura"
+    assert r.json()["concept"] == "Linha de passe"
     assert client.get("/api/scenarios/nao-existe").status_code == 404
 
 
@@ -64,3 +64,47 @@ def test_diagnosis_without_candidate_scenario():
     assert d is not None
     assert d.weakest == "transicao"
     assert d.weakest_scenario_id is None
+
+
+def test_only_wingers():
+    """A criança é sempre ala: uma jogada com ela de pivô não entra."""
+    raw = _first()
+    raw["tags"]["v"] = "P"
+    with pytest.raises(ValueError, match="ala"):
+        ScenarioIn.model_validate(raw)
+
+
+def test_new_scenario_fields_are_served(client):
+    s = client.get("/api/scenarios/ala-primeira").json()
+    assert s["threats"] == ["o2"]
+    assert s["ai"] == {"o3": "cercar", "o4": "cercar"}
+    assert s["aware"] == {"see": "a1", "label": "o pivô livre nas suas costas"}
+    assert any(f.get("slow") for f in s["intro"])
+    assert s["options"][0]["short"] == "Tocar de primeira"
+
+
+def test_seed_deactivates_plays_removed_from_the_file(client):
+    """Jogada que saiu do arquivo some do app, mas fica no banco com o histórico."""
+    from sqlalchemy import text
+
+    from app.db import SessionLocal, engine
+    from app.seed import upsert_scenarios
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO scenarios (id, category, concept, title, sort_order, setup, ask,"
+                " lesson, view, tags, face, start, intro, options, active)"
+                " SELECT 'jogada-antiga', category, concept, title, 99, setup, ask, lesson, view,"
+                " tags, face, start, intro, options, true FROM scenarios WHERE id = 'ala-primeira'"
+            )
+        )
+    try:
+        assert client.get("/api/scenarios/jogada-antiga").status_code == 200
+        with SessionLocal() as db:
+            upsert_scenarios(db, load_scenarios())
+        assert client.get("/api/scenarios/jogada-antiga").status_code == 404
+        assert len(client.get("/api/scenarios").json()) == 9
+    finally:
+        with engine.begin() as conn:
+            conn.execute(text("DELETE FROM scenarios WHERE id = 'jogada-antiga'"))

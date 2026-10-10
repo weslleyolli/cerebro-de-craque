@@ -1,14 +1,14 @@
 """Carrega as jogadas de app/data/scenarios.json no banco.
 
 Rode com `uv run python -m app.seed`. É idempotente: atualiza as jogadas que
-já existem pelo id e cria as novas. Nunca apaga jogadas, porque as decisões
-das crianças apontam para elas; para tirar uma jogada do app, use `active`.
+já existem pelo id, cria as novas e desativa (active = false) as que saíram do
+arquivo. Nunca apaga jogadas, porque as decisões das crianças apontam para elas.
 """
 
 import json
 from pathlib import Path
 
-from sqlalchemy import func
+from sqlalchemy import func, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -29,7 +29,7 @@ def load_scenarios(path: Path = DATA_FILE) -> list[ScenarioIn]:
 
 
 def upsert_scenarios(db: Session, scenarios: list[ScenarioIn]) -> int:
-    rows = [s.model_dump(mode="json") for s in scenarios]
+    rows = [{**s.model_dump(mode="json"), "active": True} for s in scenarios]
     if not rows:
         return 0
     stmt = insert(Scenario).values(rows)
@@ -38,6 +38,12 @@ def upsert_scenarios(db: Session, scenarios: list[ScenarioIn]) -> int:
         index_elements=[Scenario.id], set_={**updatable, "updated_at": func.now()}
     )
     db.execute(stmt)
+    # Jogada que saiu do arquivo sai do app, mas continua no banco com o histórico.
+    db.execute(
+        update(Scenario)
+        .where(Scenario.id.not_in([r["id"] for r in rows]), Scenario.active)
+        .values(active=False)
+    )
     db.commit()
     return len(rows)
 

@@ -72,6 +72,8 @@ def _history(db: DbSession, player_id: int) -> tuple[list[AttemptRow], list[Scen
             grade=a.grade,
             decision_ms=a.decision_ms,
             created_at=a.created_at,
+            scans=a.scans,
+            aware=a.aware,
         )
         for a, cat in rows
     ]
@@ -110,6 +112,8 @@ def record_attempt(body: AttemptIn, player: OwnedPlayer, db: DbSession) -> Attem
         option_index=body.option_index,
         grade=grade,
         decision_ms=min(body.decision_ms, MAX_DECISION_MS),
+        scans=body.scans,
+        aware=body.aware,
     )
     db.add(attempt)
     db.flush()
@@ -142,6 +146,8 @@ def record_attempt(body: AttemptIn, player: OwnedPlayer, db: DbSession) -> Attem
         grade=grade,
         points=POINTS[grade],
         decision_ms=attempt.decision_ms,
+        scans=attempt.scans,
+        aware=attempt.aware,
         created_at=attempt.created_at,
         new_medals=new_medals,
     )

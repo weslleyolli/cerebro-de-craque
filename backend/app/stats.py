@@ -22,6 +22,8 @@ MAX_DECISION_MS = 120_000
 POINTS = {"best": 3, "ok": 1, "bad": 0, "late": 0}
 FAST_MS = 3000
 RECENT_LIMIT = 15
+# Olhadas em volta antes de receber para a medalha "Radar ligado".
+RADAR_SCANS = 3
 
 
 @dataclass(frozen=True)
@@ -33,6 +35,8 @@ class AttemptRow:
     grade: str
     decision_ms: int
     created_at: datetime
+    scans: int | None = None
+    aware: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -49,6 +53,7 @@ class Progress:
     run: int = 0
     best_run: int = 0
     fast_best: bool = False
+    radar: bool = False
 
     def add(self, a: AttemptRow) -> None:
         if a.grade == "best":
@@ -56,6 +61,7 @@ class Progress:
             self.run += 1
             self.best_run = max(self.best_run, self.run)
             self.fast_best = self.fast_best or a.decision_ms < FAST_MS
+            self.radar = self.radar or (a.scans or 0) >= RADAR_SCANS
         else:
             self.run = 0
 
@@ -98,6 +104,13 @@ MEDALS: tuple[Medal, ...] = (
         "Três seguidas",
         "Três ótimas leituras em sequência.",
         lambda p, s: p.best_run >= 3,
+    ),
+    Medal(
+        "radar",
+        "RD",
+        "Radar ligado",
+        "Olhou em volta 3 vezes antes de receber e fez uma ótima leitura.",
+        lambda p, s: p.radar,
     ),
     Medal(
         "rapido",
@@ -171,6 +184,15 @@ def merge_stored(computed: list[MedalOut], stored: dict[str, datetime]) -> list[
     ]
 
 
+def _scanning(rows: Sequence[AttemptRow]) -> tuple[float | None, float | None]:
+    """Média de olhadas e fração de lances em que viu o que importava (só visão 3D)."""
+    scans = [a.scans for a in rows if a.scans is not None]
+    aware = [a.aware for a in rows if a.aware is not None]
+    avg = round(sum(scans) / len(scans), 1) if scans else None
+    rate = round(sum(aware) / len(aware), 3) if aware else None
+    return avg, rate
+
+
 def _avg(values: list[int]) -> int | None:
     return round(sum(values) / len(values)) if values else None
 
@@ -190,6 +212,7 @@ def compute_stats(
     categories = []
     for cat in CATEGORY_ORDER:
         rows = [a for a in attempts if a.category == cat]
+        cat_scans, cat_aware = _scanning(rows)
         categories.append(
             CategoryStats(
                 category=cat,
@@ -199,6 +222,8 @@ def compute_stats(
                 bad=sum(a.grade in ("bad", "late") for a in rows),
                 timeouts=sum(a.grade == "late" for a in rows),
                 avg_decision_ms=_avg([a.decision_ms for a in rows if a.grade != "late"]),
+                avg_scans=cat_scans,
+                aware_rate=cat_aware,
             )
         )
 
@@ -217,6 +242,7 @@ def compute_stats(
             )
         )
 
+    avg_scans, aware_rate = _scanning(attempts)
     return StatsOut(
         player_id=player_id,
         total_attempts=len(attempts),
@@ -224,6 +250,8 @@ def compute_stats(
         points=sum(POINTS[a.grade] for a in attempts),
         avg_decision_ms=_avg(answered),
         best_streak=best_streak(attempts),
+        avg_scans=avg_scans,
+        aware_rate=aware_rate,
         categories=categories,
         scenarios=per_scenario,
         medals=merge_stored(medals(attempts, scenarios), stored_medals or {}),
@@ -235,6 +263,8 @@ def compute_stats(
                 option_index=a.option_index,
                 grade=a.grade,
                 decision_ms=a.decision_ms,
+                scans=a.scans,
+                aware=a.aware,
                 created_at=a.created_at,
             )
             for a in reversed(attempts[-RECENT_LIMIT:])

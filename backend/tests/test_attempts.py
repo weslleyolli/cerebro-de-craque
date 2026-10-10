@@ -14,31 +14,31 @@ def best_index(client, scenario_id):
 
 
 def test_grade_comes_from_server(client, auth, player_id):
-    # Opção 1 do 2x1 é "Chutar de longe": arriscada.
-    a = post(client, auth, player_id, "2x1", 1)
+    # Opção 1 de ala-primeira é "Dominar e girar para dentro": arriscada.
+    a = post(client, auth, player_id, "ala-primeira", 1)
     assert a["grade"] == "bad" and a["points"] == 0
 
-    a = post(client, auth, player_id, "2x1", 0, ms=2500)
+    a = post(client, auth, player_id, "ala-primeira", 0, ms=2500)
     assert a["grade"] == "best" and a["points"] == 3
     assert {m["id"] for m in a["new_medals"]} == {"primeira", "rapido"}
 
 
 def test_timeout_and_invalid_option(client, auth, player_id):
-    a = post(client, auth, player_id, "pivo", None, ms=8000)
+    a = post(client, auth, player_id, "ala-parede", None, ms=8000)
     assert a["grade"] == "late"
     r = client.post(
         f"/api/players/{player_id}/attempts",
-        json={"scenario_id": "linha", "option_index": 3, "decision_ms": 1000},
+        json={"scenario_id": "ala-linha", "option_index": 3, "decision_ms": 1000},
         headers=auth,
     )
-    assert r.status_code == 422  # a jogada "linha" só tem 3 opções
+    assert r.status_code == 422  # a jogada "ala-linha" só tem 3 opções
 
 
 def test_stats_and_medals(client, auth, player_id):
-    for sid in ("2x1", "tabela", "pivo"):
+    for sid in ("ala-primeira", "ala-girar", "ala-parede"):
         post(client, auth, player_id, sid, best_index(client, sid), ms=4000)
-    post(client, auth, player_id, "cobertura", 1, ms=5000)  # dobra a marcação: arriscada
-    post(client, auth, player_id, "linha", 2, ms=6000)  # recua: dá para melhorar
+    post(client, auth, player_id, "ala-infiltracao", 1, ms=5000)  # sai na bola: arriscada
+    post(client, auth, player_id, "ala-linha", 2, ms=6000)  # recua: dá para melhorar
 
     s = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
     assert s["total_attempts"] == 5
@@ -57,6 +57,8 @@ def test_stats_and_medals(client, auth, player_id):
         "bad": 1,
         "timeouts": 0,
         "avg_decision_ms": 5500,
+        "avg_scans": None,
+        "aware_rate": None,
     }
 
     earned = {m["id"] for m in s["medals"] if m["earned"]}
@@ -65,14 +67,14 @@ def test_stats_and_medals(client, auth, player_id):
     d = s["diagnosis"]
     assert d["strongest"] == "ataque"
     assert d["weakest"] == "defesa"
-    assert d["weakest_scenario_id"] == "cobertura"
+    assert d["weakest_scenario_id"] == "ala-infiltracao"
     assert d["unplayed"] == ["transicao"]
 
-    assert s["recent"][0]["scenario_id"] == "linha"  # mais recente primeiro
+    assert s["recent"][0]["scenario_id"] == "ala-linha"  # mais recente primeiro
 
 
 def test_reset(client, auth, player_id):
-    post(client, auth, player_id, "2x1", 0)
+    post(client, auth, player_id, "ala-primeira", 0)
     r = client.delete(f"/api/players/{player_id}/attempts", headers=auth)
     assert r.status_code == 204
     s = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
@@ -82,7 +84,7 @@ def test_reset(client, auth, player_id):
 
 def test_long_decision_is_kept_and_capped(client, auth, player_id):
     # Sem pausa com tempo, a criança pode largar o aparelho: a decisão vale mesmo assim.
-    a = post(client, auth, player_id, "2x1", 0, ms=125_000)
+    a = post(client, auth, player_id, "ala-primeira", 0, ms=125_000)
     assert a["decision_ms"] == 120_000
 
 
@@ -92,19 +94,19 @@ def test_stats_survive_a_deactivated_scenario(client, auth, player_id):
 
     from app.db import engine
 
-    post(client, auth, player_id, "2x1", best_index(client, "2x1"))
-    post(client, auth, player_id, "cobertura", best_index(client, "cobertura"))
-    post(client, auth, player_id, "saida", 1)  # transição: arriscada
+    post(client, auth, player_id, "ala-primeira", best_index(client, "ala-primeira"))
+    post(client, auth, player_id, "ala-infiltracao", best_index(client, "ala-infiltracao"))
+    post(client, auth, player_id, "ala-saida", 1)  # transição: arriscada
     try:
         with engine.begin() as conn:
-            conn.execute(text("UPDATE scenarios SET active = false WHERE id = 'saida'"))
+            conn.execute(text("UPDATE scenarios SET active = false WHERE id = 'ala-saida'"))
         r = client.get(f"/api/players/{player_id}/stats", headers=auth)
         assert r.status_code == 200, r.text
         assert r.json()["diagnosis"]["weakest_scenario_id"] is None
-        assert "saida" not in {s["scenario_id"] for s in r.json()["scenarios"]}
+        assert "ala-saida" not in {s["scenario_id"] for s in r.json()["scenarios"]}
     finally:
         with engine.begin() as conn:
-            conn.execute(text("UPDATE scenarios SET active = true WHERE id = 'saida'"))
+            conn.execute(text("UPDATE scenarios SET active = true WHERE id = 'ala-saida'"))
 
 
 def test_medal_is_not_taken_back_when_a_play_is_added(client, auth, player_id):
@@ -113,7 +115,7 @@ def test_medal_is_not_taken_back_when_a_play_is_added(client, auth, player_id):
 
     from app.db import engine
 
-    for sid in ("2x1", "tabela", "pivo"):
+    for sid in ("ala-primeira", "ala-girar", "ala-parede"):
         post(client, auth, player_id, sid, best_index(client, sid))
     before = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
     camisa = next(m for m in before["medals"] if m["id"] == "camisa10")
@@ -125,7 +127,7 @@ def test_medal_is_not_taken_back_when_a_play_is_added(client, auth, player_id):
                 "INSERT INTO scenarios (id, category, concept, title, sort_order, setup, ask,"
                 " lesson, view, tags, face, start, intro, options, active)"
                 " SELECT 'ataque-novo', category, concept, title, 99, setup, ask, lesson, view,"
-                " tags, face, start, intro, options, true FROM scenarios WHERE id = '2x1'"
+                " tags, face, start, intro, options, true FROM scenarios WHERE id = 'ala-primeira'"
             )
         )
     try:
@@ -144,7 +146,47 @@ def test_medal_is_not_taken_back_when_a_play_is_added(client, auth, player_id):
 
 
 def test_reset_also_clears_medals(client, auth, player_id):
-    post(client, auth, player_id, "2x1", 0)
+    post(client, auth, player_id, "ala-primeira", 0)
     client.delete(f"/api/players/{player_id}/attempts", headers=auth)
     s = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
     assert not any(m["earned"] for m in s["medals"])
+
+
+def test_scanning_is_stored_and_summarized(client, auth, player_id):
+    """A visão 3D manda quantas vezes olhou em volta e se viu o que importava."""
+    r = client.post(
+        f"/api/players/{player_id}/attempts",
+        json={
+            "scenario_id": "ala-primeira",
+            "option_index": best_index(client, "ala-primeira"),
+            "decision_ms": 2400,
+            "scans": 4,
+            "aware": True,
+        },
+        headers=auth,
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["scans"] == 4 and body["aware"] is True
+    # Olhou 3+ vezes e acertou: medalha "Radar ligado".
+    assert "radar" in {m["id"] for m in body["new_medals"]}
+
+    post(client, auth, player_id, "ala-girar", 1)  # sem visão 3D: não entra na média
+    client.post(
+        f"/api/players/{player_id}/attempts",
+        json={
+            "scenario_id": "ala-parede",
+            "option_index": 1,
+            "decision_ms": 3000,
+            "scans": 0,
+            "aware": False,
+        },
+        headers=auth,
+    )
+    s = client.get(f"/api/players/{player_id}/stats", headers=auth).json()
+    assert s["avg_scans"] == 2.0
+    assert s["aware_rate"] == 0.5
+    ataque = next(c for c in s["categories"] if c["category"] == "ataque")
+    assert ataque["avg_scans"] == 2.0
+    assert s["recent"][0]["scans"] == 0
+    assert s["recent"][1]["scans"] is None

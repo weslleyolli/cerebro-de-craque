@@ -78,6 +78,10 @@ class Scenario(Base):
     start: Mapped[dict[str, Any]] = mapped_column(JSONB)
     intro: Mapped[list[Any]] = mapped_column(JSONB)
     options: Mapped[list[Any]] = mapped_column(JSONB)
+    threats: Mapped[list[Any]] = mapped_column(JSONB, default=list, server_default="[]")
+    ai: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
+    tall: Mapped[list[Any]] = mapped_column(JSONB, default=list, server_default="[]")
+    aware: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -100,6 +104,9 @@ class Attempt(Base):
     option_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     grade: Mapped[str] = mapped_column(String(8))
     decision_ms: Mapped[int] = mapped_column(Integer)
+    # Visão 3D: olhadas em volta antes de receber e se viu o que importava.
+    scans: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    aware: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

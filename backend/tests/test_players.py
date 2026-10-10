@@ -6,11 +6,11 @@ def test_crud(client, auth):
     assert r.status_code == 201
     p = r.json()
     assert p["name"] == "Davi"
-    assert p["settings"] == {"timed": False, "slow": False}
+    assert p["settings"] == {"timed": False, "slow": False, "hints": True}
 
     r = client.patch(
         f"/api/players/{p['id']}",
-        json={"name": "Davizinho", "settings": {"timed": True, "slow": False}},
+        json={"name": "Davizinho", "settings": {"timed": True, "slow": False, "hints": False}},
         headers=auth,
     )
     assert r.json()["name"] == "Davizinho"
@@ -32,7 +32,7 @@ def test_cannot_touch_someone_elses_player(client, auth, player_id):
     )
     r = client.post(
         f"/api/players/{player_id}/attempts",
-        json={"scenario_id": "2x1", "option_index": 0, "decision_ms": 1000},
+        json={"scenario_id": "ala-primeira", "option_index": 0, "decision_ms": 1000},
         headers=other,
     )
     assert r.status_code == 404
