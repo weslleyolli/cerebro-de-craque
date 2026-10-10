@@ -257,6 +257,10 @@ class RecentAttempt(BaseModel):
     scans: int | None = None
     aware: bool | None = None
     created_at: datetime
+    # Lidos da jogada no banco, mesmo que ela já tenha saído do app.
+    scenario_title: str | None = None
+    # None quando o tempo acabou.
+    option_label: str | None = None
 
 
 class StatsOut(BaseModel):

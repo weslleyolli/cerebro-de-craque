@@ -186,8 +186,8 @@ function Dashboard() {
                   return (
                     <tr key={a.id} className="border-t border-line whitespace-nowrap">
                       <td className="px-2.5 py-2 font-mono">{dateTime(a.created_at)}</td>
-                      <td className="px-2.5 py-2">{sc?.title}</td>
-                      <td className="px-2.5 py-2">{option?.label ?? '—'}</td>
+                      <td className="px-2.5 py-2">{a.scenario_title ?? sc?.title}</td>
+                      <td className="px-2.5 py-2">{a.option_label ?? option?.label ?? '—'}</td>
                       <td className="px-2.5 py-2">
                         <GradeChip grade={a.grade} />
                       </td>

@@ -37,6 +37,9 @@ class AttemptRow:
     created_at: datetime
     scans: int | None = None
     aware: bool | None = None
+    # Nome da jogada e texto da opção escolhida, para a lista de últimos lances.
+    title: str | None = None
+    option_label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -266,6 +269,8 @@ def compute_stats(
                 scans=a.scans,
                 aware=a.aware,
                 created_at=a.created_at,
+                scenario_title=a.title,
+                option_label=a.option_label,
             )
             for a in reversed(attempts[-RECENT_LIMIT:])
         ],

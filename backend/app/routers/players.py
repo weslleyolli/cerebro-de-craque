@@ -57,8 +57,11 @@ def delete_player(player: OwnedPlayer, db: DbSession) -> Response:
 
 
 def _history(db: DbSession, player_id: int) -> tuple[list[AttemptRow], list[ScenarioRow]]:
+    # Nome do lance e texto da escolha vêm da jogada no banco, mesmo inativa,
+    # para o histórico continuar legível depois que ela sai do app.
+    label = Scenario.options[Attempt.option_index]["label"].astext
     rows = db.execute(
-        select(Attempt, Scenario.category)
+        select(Attempt, Scenario.category, Scenario.title, label)
         .join(Scenario, Scenario.id == Attempt.scenario_id)
         .where(Attempt.player_id == player_id)
         .order_by(Attempt.created_at, Attempt.id)
@@ -74,8 +77,10 @@ def _history(db: DbSession, player_id: int) -> tuple[list[AttemptRow], list[Scen
             created_at=a.created_at,
             scans=a.scans,
             aware=a.aware,
+            title=title,
+            option_label=option_label,
         )
-        for a, cat in rows
+        for a, cat, title, option_label in rows
     ]
     scenarios = [
         ScenarioRow(id=s.id, category=s.category)

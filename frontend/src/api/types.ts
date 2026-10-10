@@ -150,6 +150,10 @@ export interface RecentAttempt {
   scans: number | null
   aware: boolean | null
   created_at: string
+  /** Nome do lance e texto da escolha, lidos do banco mesmo depois que a jogada sai do app. */
+  scenario_title?: string | null
+  /** null quando o tempo acabou. */
+  option_label?: string | null
 }
 
 export interface Stats {
