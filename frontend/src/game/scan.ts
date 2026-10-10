@@ -33,6 +33,17 @@ export function horizontalFov(verticalFovDeg: number, aspect: number): number {
   return 2 * Math.atan(Math.tan((verticalFovDeg * Math.PI) / 360) * aspect)
 }
 
+/** Abertura vertical da câmera da visão do jogador (graus). */
+export const VISION_FOV = 70
+
+/**
+ * Abertura que vale para o que a criança viu (memória, "viu o que importava",
+ * opções encontradas): a de um celular em pé, seja qual for o formato da tela.
+ * Assim, deitar o celular ou jogar no computador não deixa ver mais sem girar.
+ * A caixa da visão 3D (PlayPage) é sempre 4:5, então a tela mostra essa mesma abertura.
+ */
+export const VISION_HFOV = horizontalFov(VISION_FOV, 0.8)
+
 /** O ponto está dentro do campo de visão (só o ângulo, sem contar quem tapa)? */
 export function inView(eye: Point, yaw: number, hfov: number, target: Point, margin = 0): boolean {
   return Math.abs(angleDiff(yaw, yawTo(eye, target))) <= hfov / 2 + margin

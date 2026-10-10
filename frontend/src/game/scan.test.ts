@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   ScanTracker,
+  VISION_FOV,
+  VISION_HFOV,
   angleDiff,
   applyAI,
   directionWord,
@@ -40,6 +42,16 @@ describe('visão do jogador', () => {
     expect(inView([10, 20], 0, hfov, [11, 10])).toBe(true)
     expect(inView([10, 20], 0, hfov, [20, 20])).toBe(false) // do lado
     expect(inView([10, 20], 0, hfov, [10, 30])).toBe(false) // nas costas
+  })
+
+  it('usa a mesma abertura para o que foi visto em qualquer formato de tela', () => {
+    // A do celular em pé (~58,5°), e não a da tela: deitado (caixa 800x265), a câmera mostra ~129°.
+    expect(VISION_HFOV).toBeCloseTo(horizontalFov(VISION_FOV, 0.8))
+    expect(VISION_HFOV).toBeCloseTo(deg(58.5), 2)
+    expect(horizontalFov(VISION_FOV, 800 / 265)).toBeGreaterThan(deg(120))
+    // Algo a 40° da direção do olhar: fora da visão, mesmo que a tela deitada o mostre.
+    const at: [number, number] = [10 + 10 * Math.sin(deg(40)), 20 - 10 * Math.cos(deg(40))]
+    expect(inView([10, 20], 0, VISION_HFOV, at)).toBe(false)
   })
 
   it('percebe quando alguém tapa a visão, e o passo para o lado resolve', () => {

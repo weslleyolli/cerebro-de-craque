@@ -3,7 +3,9 @@
  * tela do treino. Sem three.js aqui, para não puxar o 3D para o pacote principal.
  */
 import type { Point, Scenario } from '../api/types'
-import { pointKey } from './scan'
+import { initialState, snapshotOf } from './engine'
+import type { BoardState } from './engine'
+import { pointKey, yawTo } from './scan'
 
 export type ScanMode = 'live' | 'frozen' | 'follow' | 'ghost'
 
@@ -24,6 +26,38 @@ export interface Vision {
 
 export function newVision(): Vision {
   return { lastSeen: new Map(), lastPos: new Map(), lastBlocked: new Map(), scans: 0, offset: [0, 0], yaw: 0 }
+}
+
+/**
+ * Para onde a criança olha quando o lance começa: da posição inicial dela para
+ * a bola. Vem do roteiro do lance, nunca do quadro na tela (que ainda pode ser o
+ * fim do lance anterior).
+ */
+export function initialYaw(scenario: Scenario): number {
+  const s = snapshotOf(initialState(scenario))
+  const you = s.positions.v
+  return you ? yawTo(you, s.ball) : 0
+}
+
+/** Até esta distância (metros), a bola solta que chega na criança acompanha o passo dela. */
+export const STEP_CARRY_M = 3
+
+/**
+ * Incorpora o passo para o lado ao lance, na pausa: a criança anda e o passe que
+ * está chegando nela vai junto, para a bola continuar nos pés dela. Bola com
+ * outro jogador ou longe não muda.
+ */
+export function applyStep(state: BoardState, offset: Point): BoardState {
+  const you = state.positions.v
+  if (!you || (!offset[0] && !offset[1])) return state
+  const ball = state.ball
+  const carry =
+    typeof ball !== 'string' && Math.hypot(ball[0] - you[0], ball[1] - you[1]) <= STEP_CARRY_M
+  return {
+    ...state,
+    positions: { ...state.positions, v: [you[0] + offset[0], you[1] + offset[1]] },
+    ball: carry ? [ball[0] + offset[0], ball[1] + offset[1]] : ball,
+  }
 }
 
 /** Ponto que representa uma opção na quadra: o companheiro, o espaço ou a própria criança. */
