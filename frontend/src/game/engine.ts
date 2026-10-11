@@ -10,10 +10,25 @@ import type { Frame, Point, Scenario } from '../api/types'
 export type Facing = 'up' | 'down'
 export type BallRef = string | Point
 
+/**
+ * Como as peças estavam se mexendo no fim de um trecho (a pausa congela no meio
+ * da corrida): o trecho seguinte começa com essas velocidades, sem tranco.
+ */
+export interface Motion {
+  /** Velocidade de cada jogador, em m/s no tempo do lance. */
+  vel: Record<string, Point>
+  /** Velocidade da bola solta (m/s). */
+  ballVel: Point
+  /** Bola com alguém: onde ela está em relação ao pé de quem conduz. */
+  carry: Point | null
+}
+
 export interface BoardState {
   positions: Record<string, Point>
   ball: BallRef
   face: Record<string, Facing>
+  /** Movimento no fim do trecho anterior (só existe depois de uma animação). */
+  motion?: Motion
 }
 
 /** O que a tela desenha num instante: posições e a bola já resolvida em ponto. */
@@ -22,6 +37,12 @@ export interface Snapshot {
   ball: Point
   /** Altura da bola em metros (0 no chão). Só a visão 3D usa. */
   ballHeight: number
+  /** Velocidade de cada jogador em m/s no tempo do lance (a visão 3D anima as pernas por ela). */
+  vel: Record<string, Point>
+  /** Ritmo do tempo na tela: 1 normal, 0,3 na câmera lenta, 0 na pausa. */
+  rate: number
+  /** Chute em andamento (0 a 1) de quem está chutando; a batida na bola é em 0,52. */
+  kick: Record<string, number>
 }
 
 export type Team = 'you' | 'us' | 'them'
@@ -59,58 +80,39 @@ export function facing(state: BoardState, id: string): 1 | -1 {
   return teamOf(id) === 'them' ? 1 : -1
 }
 
-const BALL_AHEAD = 0.8
-const BALL_SIDE = 0.25
+/** A bola parada no pé fica a esta distância à frente de quem conduz. */
+export const CARRY_AHEAD = 0.32
+/** E um pouco para o lado do pé direito. */
+export const CARRY_SIDE = 0.08
+
+/** Bola no pé de quem está parado: à frente, no sentido em que o jogador olha. */
+export function restCarry(state: BoardState, id: string): Point {
+  const keep = state.motion?.carry
+  if (keep) return keep
+  const f = facing(state, id)
+  // Olhando para cima (y diminuindo), a direita é +x.
+  return [-f * CARRY_SIDE, f * CARRY_AHEAD]
+}
 
 /** A bola com um jogador fica no pé, um pouco à frente dele. */
 export function ballPoint(state: BoardState): Point {
   if (typeof state.ball !== 'string') return state.ball
   const p = state.positions[state.ball]
   if (!p) throw new Error(`Jogador "${state.ball}" não está na quadra`)
-  return [p[0] + BALL_SIDE, p[1] + BALL_AHEAD * facing(state, state.ball)]
+  const c = restCarry(state, state.ball)
+  return [p[0] + c[0], p[1] + c[1]]
 }
 
-export const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
-export const easeOut = (t: number) => 1 - (1 - t) ** 2
-
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-
-/** Estado intermediário entre `from` e `to`, com `t` de 0 a 1. */
-export function interpolate(from: BoardState, to: BoardState, t: number): Snapshot {
-  const r = Math.min(1, Math.max(0, t))
-  const e = easeInOut(r)
-  const positions: Record<string, Point> = {}
-  for (const id of Object.keys(to.positions)) {
-    const b = to.positions[id]!
-    const a = from.positions[id] ?? b
-    positions[id] = [lerp(a[0], b[0], e), lerp(a[1], b[1], e)]
-  }
-
-  // Bola no pé do mesmo jogador: acompanha o jogador. Passe ou chute: viaja sozinha.
-  const carried = typeof from.ball === 'string' && from.ball === to.ball
-  if (carried)
-    return { positions, ball: ballPoint({ positions, ball: to.ball, face: from.face }), ballHeight: 0 }
-
-  const b0 = ballPoint(from)
-  const b1 = ballPoint(to)
-  const eb = easeOut(r)
-  return {
-    positions,
-    ball: [lerp(b0[0], b1[0], eb), lerp(b0[1], b1[1], eb)],
-    ballHeight: arcHeight(Math.hypot(b1[0] - b0[0], b1[1] - b0[1]), eb),
-  }
-}
-
-const ARC_PER_METER = 0.06
-const ARC_MAX = 1.4
-
-/** Bola viajando sobe um pouco no meio do caminho: passe longo e chute fazem arco. */
-export function arcHeight(distance: number, t: number): number {
-  return Math.sin(Math.PI * t) * Math.min(ARC_MAX, distance * ARC_PER_METER)
-}
-
+/** Quadro parado: as peças onde estão (congeladas no meio do movimento, se vieram de uma animação). */
 export function snapshotOf(state: BoardState): Snapshot {
-  return { positions: { ...state.positions }, ball: ballPoint(state), ballHeight: 0 }
+  return {
+    positions: { ...state.positions },
+    ball: ballPoint(state),
+    ballHeight: 0,
+    vel: state.motion ? { ...state.motion.vel } : {},
+    rate: state.motion ? 0 : 1,
+    kick: {},
+  }
 }
 
 export interface Arrow {
